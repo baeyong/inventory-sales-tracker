@@ -1,36 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 📦 Resale Tracker
 
-## Getting Started
+Personal inventory & sales tracker for reselling — sneakers, sports cards,
+Pokémon cards, and everything else worth flipping.
 
-First, run the development server:
+**Live app:** https://inventory-sales-tracker-beta.vercel.app/
+
+## What it does
+
+- **Inventory** — every item you own: cost, where you bought it, category,
+  card details (set / number / grade), and whether it's listed for sale yet
+- **Sales** — payouts, profit per item, and Paid / Shipped checkboxes
+- **Pending** — a to-do board of sales still waiting on money or shipping
+- **Dashboard** — realized profit, monthly profit chart, and per-category
+  breakdown
+- **Import** — upload any spreadsheet (.xlsx / .csv); columns are matched by
+  fuzzy guessing plus a short clarifying chat, duplicates are detected,
+  categories are auto-inferred from item names, and re-imports fill in
+  missing details instead of duplicating
+- **Filters & search** — date / category / listed filters, plus typo-tolerant
+  live search across all item fields
+
+## Stack
+
+- [Next.js](https://nextjs.org) (App Router) — hosted on Vercel
+- [Supabase](https://supabase.com) — Postgres, auth, row-level security
+- Tailwind CSS, Recharts, SheetJS, Zod
+
+## Local development
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Copy `.env.example` to `.env.local` and fill in the Supabase project URL and
+anon key (Supabase dashboard → Project Settings → Data API / API Keys).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Database migrations
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Schema lives in [`supabase/migrations/`](supabase/migrations/). Migrations are
+applied manually: paste each file into the Supabase **SQL Editor** in numeric
+order. When a code change ships with a new migration file, run it **before**
+deploying.
 
-## Learn More
+## Deploying
 
-To learn more about Next.js, take a look at the following resources:
+Pushes to `master` auto-deploy via Vercel:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+git add -A
+git commit -m "describe the change"
+git push
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Production environment variables (`NEXT_PUBLIC_SUPABASE_URL`,
+`NEXT_PUBLIC_SUPABASE_ANON_KEY`) are configured in the Vercel project
+settings, not in the repo.

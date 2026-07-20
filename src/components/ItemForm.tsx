@@ -40,7 +40,12 @@ export default function ItemForm({
 
   return (
     <form action={action} className="max-w-2xl space-y-4">
-      {item && <input type="hidden" name="id" value={item.id} />}
+      {item && (
+        <>
+          <input type="hidden" name="id" value={item.id} />
+          <input type="hidden" name="quantity" value={item.quantity} />
+        </>
+      )}
 
       <label className="block text-sm">
         <span className="font-medium">Category</span>
@@ -179,18 +184,23 @@ export default function ItemForm({
             className={inputCls}
           />
         </label>
-        <label className="block text-sm">
-          <span className="font-medium">Quantity (lot size)</span>
-          <input
-            name="quantity"
-            type="number"
-            min="1"
-            step="1"
-            required
-            defaultValue={v?.quantity ?? item?.quantity ?? 1}
-            className={inputCls}
-          />
-        </label>
+        {!item && (
+          <label className="block text-sm">
+            <span className="font-medium">Quantity</span>
+            <input
+              name="quantity"
+              type="number"
+              min="1"
+              step="1"
+              required
+              defaultValue={v?.quantity ?? 1}
+              className={inputCls}
+            />
+            <span className="mt-1 block text-xs text-zinc-500">
+              More than 1 adds a separate entry each, splitting the cost.
+            </span>
+          </label>
+        )}
       </div>
 
       <label className="flex items-center gap-2 text-sm">

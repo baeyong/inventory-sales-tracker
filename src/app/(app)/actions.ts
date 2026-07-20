@@ -144,9 +144,20 @@ export async function createItem(
     return { error: firstError(parsed.error), values: formValues(formData) };
   }
 
-  const { error } = await supabase
-    .from("items")
-    .insert({ ...parsed.data, user_id: user.id });
+  // A quantity > 1 creates one entry per unit (each tracked, listed, and sold
+  // on its own), splitting the total cost evenly across them to the cent.
+  const { quantity, ...rest } = parsed.data;
+  const totalCents = Math.round(rest.purchase_price * 100);
+  const baseCents = Math.floor(totalCents / quantity);
+  const extra = totalCents - baseCents * quantity;
+  const rows = Array.from({ length: quantity }, (_, i) => ({
+    ...rest,
+    quantity: 1,
+    purchase_price: (baseCents + (i < extra ? 1 : 0)) / 100,
+    user_id: user.id,
+  }));
+
+  const { error } = await supabase.from("items").insert(rows);
   if (error) {
     return { error: dbError(error.message), values: formValues(formData) };
   }

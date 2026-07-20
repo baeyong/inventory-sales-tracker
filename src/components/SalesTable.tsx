@@ -17,6 +17,8 @@ import {
   type Item,
 } from "@/lib/types";
 import { matchesSearch } from "@/lib/search";
+import { sortItems, type SortDir, type SortKey } from "@/lib/sort";
+import SortHeader from "@/components/SortHeader";
 
 export default function SalesTable({ items }: { items: Item[] }) {
   const router = useRouter();
@@ -24,10 +26,25 @@ export default function SalesTable({ items }: { items: Item[] }) {
   const [dialogIds, setDialogIds] = useState<string[] | null>(null);
   const [category, setCategory] = useState("");
   const [search, setSearch] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const visible = items.filter((i) => matchesSearch(i, search));
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  }
+
+  const visible = sortItems(
+    items.filter((i) => matchesSearch(i, search)),
+    sortKey,
+    sortDir
+  );
 
   const categorySuggestions = [
     ...DEFAULT_CATEGORIES,
@@ -176,12 +193,12 @@ export default function SalesTable({ items }: { items: Item[] }) {
                   className="accent-blue-600"
                 />
               </th>
-              <th className="px-4 py-3">Item</th>
-              <th className="px-4 py-3">Sold</th>
+              <SortHeader label="Item" sortKey="name" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
+              <SortHeader label="Sold" sortKey="sale_date" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
               <th className="px-4 py-3">Bought at</th>
-              <th className="px-4 py-3 text-right">Cost</th>
-              <th className="px-4 py-3 text-right">Payout</th>
-              <th className="px-4 py-3 text-right">Profit</th>
+              <SortHeader label="Cost" sortKey="purchase_price" activeKey={sortKey} dir={sortDir} onSort={toggleSort} align="right" />
+              <SortHeader label="Payout" sortKey="sale_payout" activeKey={sortKey} dir={sortDir} onSort={toggleSort} align="right" />
+              <SortHeader label="Profit" sortKey="profit" activeKey={sortKey} dir={sortDir} onSort={toggleSort} align="right" />
               <th className="px-4 py-3 text-center">Paid</th>
               <th className="px-4 py-3 text-center">Shipped</th>
               <th className="px-4 py-3" />

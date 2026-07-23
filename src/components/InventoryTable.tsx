@@ -265,13 +265,21 @@ export default function InventoryTable({ items }: { items: Item[] }) {
                     className="h-4 w-4 accent-emerald-600"
                   />
                 </td>
-                <td className="px-4 py-3 text-right">
-                  <Link
-                    href={`/inventory/${item.id}`}
-                    className="text-blue-600 hover:underline"
-                  >
-                    Edit / Sell
-                  </Link>
+                <td className="px-4 py-3">
+                  <div className="flex justify-end gap-2">
+                    <Link
+                      href={`/inventory/${item.id}/sell`}
+                      className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700"
+                    >
+                      Sell
+                    </Link>
+                    <Link
+                      href={`/inventory/${item.id}`}
+                      className="rounded-md border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    >
+                      Edit
+                    </Link>
+                  </div>
                 </td>
               </tr>
             ))}

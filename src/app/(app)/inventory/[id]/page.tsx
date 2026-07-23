@@ -47,10 +47,14 @@ export default async function ItemPage({
         <div className="max-w-2xl rounded-xl border border-emerald-200 bg-emerald-50/50 p-5 dark:border-emerald-900 dark:bg-emerald-950/30">
           <h2 className="font-semibold">Sold it?</h2>
           <p className="mt-1 mb-4 text-sm text-zinc-500">
-            Record the sale — enter the net payout you actually received after
-            fees and shipping.
+            Record the sale on its own screen.
           </p>
-          <SellForm itemId={item.id} />
+          <Link
+            href={`/inventory/${item.id}/sell`}
+            className="inline-block rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+          >
+            Mark as sold
+          </Link>
         </div>
       )}
 

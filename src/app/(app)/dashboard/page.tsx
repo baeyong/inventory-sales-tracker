@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { formatMoney, type Item } from "@/lib/types";
 import ProfitChart, { type MonthPoint } from "@/components/ProfitChart";
+import BackupButtons from "@/components/BackupButtons";
 
 export const metadata = { title: "Dashboard · Resale Tracker" };
 
@@ -256,6 +257,16 @@ export default async function DashboardPage() {
           </ul>
         </div>
       )}
+
+      <div className="mt-6 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+        <h2 className="font-semibold">Backup your data</h2>
+        <p className="mb-4 mt-1 text-sm text-zinc-500">
+          Download a copy of everything to your computer. CSV opens in Excel or
+          Google Sheets (handy for taxes); JSON is a complete snapshot. Keep a
+          recent copy somewhere safe like Google Drive.
+        </p>
+        <BackupButtons />
+      </div>
     </div>
   );
 }

@@ -362,6 +362,18 @@ export async function importItems(rows: unknown): Promise<{
   return { imported: inserts.length, updated: updates.length, duplicates };
 }
 
+/** Every item the signed-in user owns — for the Download Backup feature.
+ * RLS scopes this to the current user. */
+export async function exportItems(): Promise<Record<string, unknown>[]> {
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase
+    .from("items")
+    .select("*")
+    .order("created_at", { ascending: true });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as Record<string, unknown>[];
+}
+
 const idListSchema = z.array(z.string().min(1)).min(1).max(2000);
 
 export async function bulkSetCategory(

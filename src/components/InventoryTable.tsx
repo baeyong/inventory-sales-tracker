@@ -5,11 +5,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   bulkDeleteItems,
+  bulkMarkSold,
   bulkSetCategory,
   updateFulfillment,
 } from "@/app/(app)/actions";
 import {
   DEFAULT_CATEGORIES,
+  PLATFORM_SUGGESTIONS,
   formatDate,
   formatMoney,
   isCardCategory,
@@ -39,6 +41,12 @@ export default function InventoryTable({ items }: { items: Item[] }) {
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [bundleOpen, setBundleOpen] = useState(false);
+  const [bundleDate, setBundleDate] = useState(() =>
+    new Date().toISOString().slice(0, 10)
+  );
+  const [bundlePlatform, setBundlePlatform] = useState("");
+  const [bundleTotal, setBundleTotal] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -125,6 +133,35 @@ export default function InventoryTable({ items }: { items: Item[] }) {
     });
   }
 
+  const bundleTotalNum = parseFloat(bundleTotal);
+  const bundleValid =
+    bundleDate !== "" && bundleTotal !== "" && !isNaN(bundleTotalNum);
+  const bundlePerItem =
+    bundleValid && selected.size > 0
+      ? bundleTotalNum / selected.size
+      : null;
+
+  function sellBundle() {
+    if (selected.size === 0 || !bundleValid) return;
+    setError(null);
+    startTransition(async () => {
+      const res = await bulkMarkSold([...selected], {
+        sale_date: bundleDate,
+        sale_platform: bundlePlatform,
+        total_payout: bundleTotal,
+      });
+      if (res.error) {
+        setError(res.error);
+      } else {
+        setSelected(new Set());
+        setBundleOpen(false);
+        setBundlePlatform("");
+        setBundleTotal("");
+        router.push("/sales");
+      }
+    });
+  }
+
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center gap-3">
@@ -174,6 +211,17 @@ export default function InventoryTable({ items }: { items: Item[] }) {
               Set category
             </button>
           </span>
+          <button
+            type="button"
+            onClick={() => {
+              setError(null);
+              setBundleOpen(true);
+            }}
+            disabled={pending}
+            className="rounded-md bg-emerald-600 px-3 py-1.5 font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+          >
+            Sell together
+          </button>
           <button
             type="button"
             onClick={deleteSelected}
@@ -286,6 +334,90 @@ export default function InventoryTable({ items }: { items: Item[] }) {
           </tbody>
         </table>
       </div>
+
+      {bundleOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-6 shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
+            <h2 className="text-lg font-semibold">
+              Sell {selected.size} items together
+            </h2>
+            <p className="mt-1 text-sm text-zinc-500">
+              Enter one total payout — it&apos;s split evenly across the{" "}
+              {selected.size} items. Each keeps its own cost.
+            </p>
+
+            <div className="mt-4 space-y-4">
+              <label className="block text-sm">
+                <span className="font-medium">Sale date</span>
+                <input
+                  type="date"
+                  value={bundleDate}
+                  onChange={(e) => setBundleDate(e.target.value)}
+                  className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+                />
+              </label>
+              <label className="block text-sm">
+                <span className="font-medium">Platform</span>
+                <input
+                  value={bundlePlatform}
+                  onChange={(e) => setBundlePlatform(e.target.value)}
+                  list="bundle-platforms"
+                  placeholder="eBay, Whatnot… (optional)"
+                  className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+                />
+                <datalist id="bundle-platforms">
+                  {PLATFORM_SUGGESTIONS.map((p) => (
+                    <option key={p} value={p} />
+                  ))}
+                </datalist>
+              </label>
+              <label className="block text-sm">
+                <span className="font-medium">Total payout</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={bundleTotal}
+                  onChange={(e) => setBundleTotal(e.target.value)}
+                  placeholder="Total received after fees"
+                  className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+                />
+              </label>
+              {bundlePerItem !== null && (
+                <p className="text-sm text-zinc-500">
+                  ≈ {formatMoney(bundlePerItem)} per item
+                  {" "}
+                  (split to the cent)
+                </p>
+              )}
+            </div>
+
+            {error && (
+              <p className="mt-3 text-sm text-red-600 dark:text-red-400">
+                {error}
+              </p>
+            )}
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => setBundleOpen(false)}
+                className="rounded-md px-4 py-2 text-sm text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={pending || !bundleValid}
+                onClick={sellBundle}
+                className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+              >
+                {pending ? "Selling…" : "Record bundle sale"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

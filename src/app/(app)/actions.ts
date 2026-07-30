@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { matchImportRows, type MatchCandidate } from "@/lib/importMapping";
+import { splitPayout } from "@/lib/money";
 
 export type FormState = {
   error?: string;
@@ -397,6 +398,56 @@ export async function bulkSetCategory(
   revalidatePath("/inventory");
   revalidatePath("/sales");
   return { updated: count ?? 0 };
+}
+
+const bundleSaleSchema = z.object({
+  sale_date: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Sale date is required"),
+  sale_platform: z
+    .string()
+    .trim()
+    .transform((s) => (s === "" ? null : s)),
+  total_payout: z.coerce.number({ error: "Enter a valid amount" }),
+});
+
+/** Mark several inventory items sold as one bundle: the total payout is
+ * divided evenly (to the cent) across them, all sharing the sale date and
+ * platform. Each item keeps its own cost. */
+export async function bulkMarkSold(
+  ids: unknown,
+  patch: unknown
+): Promise<{ error?: string; sold?: number }> {
+  const { supabase, user } = await requireUser();
+
+  const idsParsed = idListSchema.safeParse(ids);
+  const p = bundleSaleSchema.safeParse(patch);
+  if (!idsParsed.success) return { error: "No items selected." };
+  if (!p.success) {
+    return { error: p.error.issues[0]?.message ?? "Invalid sale details." };
+  }
+
+  const shares = splitPayout(p.data.total_payout, idsParsed.data.length);
+
+  for (let i = 0; i < idsParsed.data.length; i++) {
+    const { error } = await supabase
+      .from("items")
+      .update({
+        sale_date: p.data.sale_date,
+        sale_platform: p.data.sale_platform,
+        sale_payout: shares[i],
+      })
+      .eq("id", idsParsed.data[i])
+      .is("sale_date", null) // don't re-sell an already-sold item
+      .eq("user_id", user.id);
+    if (error) return { error: dbError(error.message) };
+  }
+
+  revalidatePath("/inventory");
+  revalidatePath("/sales");
+  revalidatePath("/dashboard");
+  return { sold: idsParsed.data.length };
 }
 
 const fulfillmentSchema = z.object({

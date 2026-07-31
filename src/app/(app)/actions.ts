@@ -557,6 +557,34 @@ export async function updateFulfillment(
   return {};
 }
 
+/** Set payment/shipped on several items at once — e.g. a bundle that ships
+ * as one parcel and is paid in one go. */
+export async function bulkSetFulfillment(
+  ids: unknown,
+  patch: unknown
+): Promise<{ error?: string; updated?: number }> {
+  const { supabase, user } = await requireUser();
+
+  const idsParsed = idListSchema.safeParse(ids);
+  const patchParsed = fulfillmentSchema.safeParse(patch);
+  if (!idsParsed.success) return { error: "No items selected." };
+  if (!patchParsed.success || Object.keys(patchParsed.data).length === 0) {
+    return { error: "Nothing to update." };
+  }
+
+  const { error, count } = await supabase
+    .from("items")
+    .update(patchParsed.data, { count: "exact" })
+    .in("id", idsParsed.data)
+    .eq("user_id", user.id);
+  if (error) return { error: dbError(error.message) };
+
+  revalidatePath("/inventory");
+  revalidatePath("/sales");
+  revalidatePath("/pending");
+  return { updated: count ?? 0 };
+}
+
 export async function bulkDeleteItems(
   ids: unknown
 ): Promise<{ error?: string; deleted?: number }> {

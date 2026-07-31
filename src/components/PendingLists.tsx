@@ -3,7 +3,7 @@
 import { useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { updateFulfillment } from "@/app/(app)/actions";
+import { bulkSetFulfillment, updateFulfillment } from "@/app/(app)/actions";
 import { formatDate, formatMoney, type Item } from "@/lib/types";
 
 function Section({
@@ -89,8 +89,15 @@ export default function PendingLists({ items }: { items: Item[] }) {
   const [pending, startTransition] = useTransition();
 
   function toggle(item: Item, field: "payment_received" | "shipped") {
+    // A bundle ships/pays together, so tick every still-pending sibling at once.
+    const siblingIds = item.bundle_id
+      ? items.filter((i) => i.bundle_id === item.bundle_id).map((i) => i.id)
+      : [item.id];
     startTransition(async () => {
-      const res = await updateFulfillment(item.id, { [field]: !item[field] });
+      const res =
+        siblingIds.length > 1
+          ? await bulkSetFulfillment(siblingIds, { [field]: !item[field] })
+          : await updateFulfillment(item.id, { [field]: !item[field] });
       if (!res.error) router.refresh();
     });
   }

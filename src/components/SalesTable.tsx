@@ -7,6 +7,7 @@ import {
   bulkDeleteItems,
   bulkMarkUnsold,
   bulkSetCategory,
+  bulkSetFulfillment,
   bulkUpdateSale,
   updateFulfillment,
 } from "@/app/(app)/actions";
@@ -179,10 +180,32 @@ export default function SalesTable({ items }: { items: Item[] }) {
     field: "payment_received" | "shipped"
   ) {
     setError(null);
+    const value = !item[field];
+    // A bundle ships/pays as one, so move every sibling together.
+    const ids = item.bundle_id
+      ? (bundles.get(item.bundle_id) ?? [item]).map((i) => i.id)
+      : [item.id];
     startTransition(async () => {
-      const res = await updateFulfillment(item.id, { [field]: !item[field] });
+      const res =
+        ids.length > 1
+          ? await bulkSetFulfillment(ids, { [field]: value })
+          : await updateFulfillment(item.id, { [field]: value });
       if (res.error) setError(res.error);
       else router.refresh();
+    });
+  }
+
+  function applyFulfillment(field: "payment_received" | "shipped", value: boolean) {
+    if (selected.size === 0) return;
+    setError(null);
+    startTransition(async () => {
+      const res = await bulkSetFulfillment([...selected], { [field]: value });
+      if (res.error) {
+        setError(res.error);
+      } else {
+        setSelected(new Set());
+        router.refresh();
+      }
     });
   }
 
@@ -242,6 +265,22 @@ export default function SalesTable({ items }: { items: Item[] }) {
             className="rounded-md border border-blue-300 px-3 py-1.5 font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950"
           >
             Edit sale details
+          </button>
+          <button
+            type="button"
+            onClick={() => applyFulfillment("payment_received", true)}
+            disabled={pending}
+            className="rounded-md border border-zinc-300 px-3 py-1.5 font-medium hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+          >
+            Mark paid
+          </button>
+          <button
+            type="button"
+            onClick={() => applyFulfillment("shipped", true)}
+            disabled={pending}
+            className="rounded-md border border-zinc-300 px-3 py-1.5 font-medium hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+          >
+            Mark shipped
           </button>
           <button
             type="button"

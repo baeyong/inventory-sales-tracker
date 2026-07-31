@@ -46,6 +46,20 @@ export default function SalesTable({ items }: { items: Item[] }) {
     sortDir
   );
 
+  // Group bundle siblings so each row can show what it sold with.
+  const bundles = new Map<string, Item[]>();
+  for (const i of items) {
+    if (!i.bundle_id) continue;
+    const group = bundles.get(i.bundle_id) ?? [];
+    group.push(i);
+    bundles.set(i.bundle_id, group);
+  }
+
+  function selectBundle(bundleId: string) {
+    const ids = (bundles.get(bundleId) ?? []).map((i) => i.id);
+    setSelected((prev) => new Set([...prev, ...ids]));
+  }
+
   const categorySuggestions = [
     ...DEFAULT_CATEGORIES,
     ...items.map((i) => i.category),
@@ -242,6 +256,34 @@ export default function SalesTable({ items }: { items: Item[] }) {
                     >
                       {item.category}
                     </span>
+                    {item.buyer && (
+                      <span className="mt-0.5 block text-xs text-zinc-500">
+                        Buyer: {item.buyer}
+                      </span>
+                    )}
+                    {item.bundle_id &&
+                      (() => {
+                        const siblings = (bundles.get(item.bundle_id) ?? [])
+                          .filter((s) => s.id !== item.id)
+                          .map((s) => s.name);
+                        if (siblings.length === 0) return null;
+                        return (
+                          <span className="mt-0.5 block text-xs text-zinc-500">
+                            <span className="mr-1 rounded-full bg-amber-50 px-1.5 py-0.5 font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                              Bundle
+                            </span>
+                            with {siblings.join(", ")}
+                            {" · "}
+                            <button
+                              type="button"
+                              onClick={() => selectBundle(item.bundle_id!)}
+                              className="text-blue-600 hover:underline"
+                            >
+                              select all
+                            </button>
+                          </span>
+                        );
+                      })()}
                   </td>
                   <td className="px-4 py-3">{formatDate(item.sale_date)}</td>
                   <td className="px-4 py-3">

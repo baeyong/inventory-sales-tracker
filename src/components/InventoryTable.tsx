@@ -47,6 +47,7 @@ export default function InventoryTable({ items }: { items: Item[] }) {
   );
   const [bundlePlatform, setBundlePlatform] = useState("");
   const [bundleTotal, setBundleTotal] = useState("");
+  const [bundleBuyer, setBundleBuyer] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -149,6 +150,7 @@ export default function InventoryTable({ items }: { items: Item[] }) {
         sale_date: bundleDate,
         sale_platform: bundlePlatform,
         total_payout: bundleTotal,
+        buyer: bundleBuyer,
       });
       if (res.error) {
         setError(res.error);
@@ -157,6 +159,7 @@ export default function InventoryTable({ items }: { items: Item[] }) {
         setBundleOpen(false);
         setBundlePlatform("");
         setBundleTotal("");
+        setBundleBuyer("");
         router.push("/sales");
       }
     });
@@ -379,6 +382,15 @@ export default function InventoryTable({ items }: { items: Item[] }) {
                   value={bundleTotal}
                   onChange={(e) => setBundleTotal(e.target.value)}
                   placeholder="Total received after fees"
+                  className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+                />
+              </label>
+              <label className="block text-sm">
+                <span className="font-medium">Buyer (name / username)</span>
+                <input
+                  value={bundleBuyer}
+                  onChange={(e) => setBundleBuyer(e.target.value)}
+                  placeholder="Who bought it — optional"
                   className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
                 />
               </label>

@@ -12,12 +12,14 @@ export default function SellForm({
   defaultDate,
   defaultPlatform,
   defaultPayout,
+  defaultBuyer,
   submitLabel = "Mark as sold",
 }: {
   itemId: string;
   defaultDate?: string | null;
   defaultPlatform?: string | null;
   defaultPayout?: number | null;
+  defaultBuyer?: string | null;
   submitLabel?: string;
 }) {
   const [state, action, pending] = useActionState<FormState, FormData>(
@@ -72,6 +74,15 @@ export default function SellForm({
           />
         </label>
       </div>
+      <label className="block text-sm">
+        <span className="font-medium">Buyer (name / username)</span>
+        <input
+          name="buyer"
+          defaultValue={v?.buyer ?? defaultBuyer ?? ""}
+          placeholder="Who bought it — optional"
+          className={inputCls}
+        />
+      </label>
       {state?.error && (
         <p className="text-sm text-red-600 dark:text-red-400">{state.error}</p>
       )}

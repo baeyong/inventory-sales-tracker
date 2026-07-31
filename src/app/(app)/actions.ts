@@ -100,6 +100,7 @@ const saleSchema = z.object({
   sale_platform: z.string().trim().min(1, "Platform is required"),
   // Net payout may be negative when fees exceed the sale price.
   sale_payout: z.coerce.number({ error: "Enter a valid amount" }),
+  buyer: optionalText,
 });
 
 function itemPayload(formData: FormData) {
@@ -222,6 +223,7 @@ export async function markSold(
     sale_date: formData.get("sale_date"),
     sale_platform: formData.get("sale_platform"),
     sale_payout: formData.get("sale_payout"),
+    buyer: formData.get("buyer"),
   });
   if (!parsed.success) {
     return { error: firstError(parsed.error), values: formValues(formData) };
@@ -410,6 +412,7 @@ const bundleSaleSchema = z.object({
     .trim()
     .transform((s) => (s === "" ? null : s)),
   total_payout: z.coerce.number({ error: "Enter a valid amount" }),
+  buyer: optionalText,
 });
 
 /** Mark several inventory items sold as one bundle: the total payout is
@@ -429,6 +432,9 @@ export async function bulkMarkSold(
   }
 
   const shares = splitPayout(p.data.total_payout, idsParsed.data.length);
+  // Tag a multi-item bundle so the Sales page can show what sold together.
+  const bundleId =
+    idsParsed.data.length > 1 ? crypto.randomUUID() : null;
 
   for (let i = 0; i < idsParsed.data.length; i++) {
     const { error } = await supabase
@@ -437,6 +443,8 @@ export async function bulkMarkSold(
         sale_date: p.data.sale_date,
         sale_platform: p.data.sale_platform,
         sale_payout: shares[i],
+        buyer: p.data.buyer,
+        bundle_id: bundleId,
       })
       .eq("id", idsParsed.data[i])
       .is("sale_date", null) // don't re-sell an already-sold item
@@ -518,8 +526,10 @@ export async function bulkMarkUnsold(
         sale_date: null,
         sale_platform: null,
         sale_payout: null,
+        buyer: null,
         payment_received: false,
         shipped: false,
+        bundle_id: null,
       },
       { count: "exact" }
     )
@@ -545,8 +555,10 @@ export async function markUnsold(formData: FormData) {
       sale_date: null,
       sale_platform: null,
       sale_payout: null,
+      buyer: null,
       payment_received: false,
       shipped: false,
+      bundle_id: null,
     })
     .eq("id", id)
     .eq("user_id", user.id);

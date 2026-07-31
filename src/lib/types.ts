@@ -40,8 +40,10 @@ export interface Item {
   sale_date: string | null; // YYYY-MM-DD, null = unsold
   sale_platform: string | null;
   sale_payout: number | null;
+  buyer: string | null; // who it was sold to (name/username)
   payment_received: boolean;
   shipped: boolean;
+  bundle_id: string | null; // shared across items sold together
   created_at: string;
   updated_at: string;
 }

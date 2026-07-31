@@ -62,9 +62,16 @@ function Section({
                   </Link>
                   <span className="block text-xs text-zinc-500">
                     Sold {formatDate(item.sale_date)}
+                    {item.sale_platform && <> · on {item.sale_platform}</>}
                     {item.purchase_platform && <> · from {item.purchase_platform}</>}
                     {item.sale_payout !== null && (
                       <> · {formatMoney(Number(item.sale_payout))}</>
+                    )}
+                    {item.buyer && <> · to {item.buyer}</>}
+                    {item.bundle_id && (
+                      <span className="ml-1 rounded-full bg-amber-50 px-1.5 py-0.5 font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                        Bundle
+                      </span>
                     )}
                   </span>
                 </span>

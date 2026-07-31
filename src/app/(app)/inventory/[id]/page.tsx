@@ -71,6 +71,7 @@ export default async function ItemPage({
             defaultDate={item.sale_date}
             defaultPlatform={item.sale_platform}
             defaultPayout={item.sale_payout}
+            defaultBuyer={item.buyer}
             submitLabel="Update sale"
           />
         </div>

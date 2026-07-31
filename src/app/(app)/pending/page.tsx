@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getBundleNumbers } from "@/app/(app)/actions";
 import { type Item } from "@/lib/types";
 import PendingLists from "@/components/PendingLists";
 
@@ -14,6 +15,7 @@ export default async function PendingPage() {
     .or("payment_received.eq.false,shipped.eq.false")
     .order("sale_date", { ascending: true });
   const items = (data ?? []) as Item[];
+  const bundleNumbers = await getBundleNumbers();
 
   return (
     <div>
@@ -33,7 +35,7 @@ export default async function PendingPage() {
         </div>
       ) : (
         <div className="mt-6">
-          <PendingLists items={items} />
+          <PendingLists items={items} bundleNumbers={bundleNumbers} />
         </div>
       )}
     </div>

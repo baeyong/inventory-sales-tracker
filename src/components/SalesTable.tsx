@@ -20,9 +20,16 @@ import {
 } from "@/lib/types";
 import { matchesSearch } from "@/lib/search";
 import { sortItems, type SortDir, type SortKey } from "@/lib/sort";
+import { buildBundleMeta, groupBundles } from "@/lib/bundles";
 import SortHeader from "@/components/SortHeader";
 
-export default function SalesTable({ items }: { items: Item[] }) {
+export default function SalesTable({
+  items,
+  bundleNumbers,
+}: {
+  items: Item[];
+  bundleNumbers: Record<string, number>;
+}) {
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [dialogIds, setDialogIds] = useState<string[] | null>(null);
@@ -48,23 +55,29 @@ export default function SalesTable({ items }: { items: Item[] }) {
     }
   }
 
-  const visible = sortItems(
+  const sorted = sortItems(
     items.filter((i) => matchesSearch(i, search)),
     sortKey,
     sortDir
   );
 
-  // Group bundle siblings so each row can show what it sold with.
-  const bundles = new Map<string, Item[]>();
-  for (const i of items) {
-    if (!i.bundle_id) continue;
-    const group = bundles.get(i.bundle_id) ?? [];
-    group.push(i);
-    bundles.set(i.bundle_id, group);
+  // Stable number + colour per 2+ item bundle, and a row order that keeps each
+  // bundle's members contiguous so nothing separates them.
+  const bundleMeta = buildBundleMeta(bundleNumbers);
+  const visible = groupBundles(sorted, bundleMeta);
+
+  // Visible members of each bundle, in display order — the first one carries
+  // the bundle's shared (row-spanning) checkbox/paid/shipped cells.
+  const bundleVisible = new Map<string, Item[]>();
+  for (const it of visible) {
+    if (!it.bundle_id || !bundleMeta.has(it.bundle_id)) continue;
+    const arr = bundleVisible.get(it.bundle_id) ?? [];
+    arr.push(it);
+    bundleVisible.set(it.bundle_id, arr);
   }
 
   function selectBundle(bundleId: string) {
-    const ids = (bundles.get(bundleId) ?? []).map((i) => i.id);
+    const ids = (bundleVisible.get(bundleId) ?? []).map((i) => i.id);
     setSelected((prev) => new Set([...prev, ...ids]));
   }
 
@@ -148,11 +161,16 @@ export default function SalesTable({ items }: { items: Item[] }) {
 
   const allSelected = visible.length > 0 && visible.every((i) => selected.has(i.id));
 
-  function toggle(id: string) {
+  // Select/deselect a whole bundle (or a single item) with one checkbox.
+  function toggleSelection(members: Item[]) {
+    const ids = members.map((m) => m.id);
+    const allSel = ids.every((id) => selected.has(id));
     setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      for (const id of ids) {
+        if (allSel) next.delete(id);
+        else next.add(id);
+      }
       return next;
     });
   }
@@ -175,21 +193,19 @@ export default function SalesTable({ items }: { items: Item[] }) {
     });
   }
 
-  function toggleFlag(
-    item: Item,
-    field: "payment_received" | "shipped"
+  // One Paid/Shipped checkbox drives the whole bundle (or a single item).
+  function setFlag(
+    members: Item[],
+    field: "payment_received" | "shipped",
+    value: boolean
   ) {
     setError(null);
-    const value = !item[field];
-    // A bundle ships/pays as one, so move every sibling together.
-    const ids = item.bundle_id
-      ? (bundles.get(item.bundle_id) ?? [item]).map((i) => i.id)
-      : [item.id];
+    const ids = members.map((m) => m.id);
     startTransition(async () => {
       const res =
         ids.length > 1
           ? await bulkSetFulfillment(ids, { [field]: value })
-          : await updateFulfillment(item.id, { [field]: value });
+          : await updateFulfillment(ids[0], { [field]: value });
       if (res.error) setError(res.error);
       else router.refresh();
     });
@@ -333,17 +349,48 @@ export default function SalesTable({ items }: { items: Item[] }) {
                 item.sale_payout === null
                   ? null
                   : Number(item.sale_payout) - Number(item.purchase_price);
+              const meta = item.bundle_id
+                ? bundleMeta.get(item.bundle_id)
+                : undefined;
+              // Members of this bundle (or just this item); the first member
+              // carries the shared, row-spanning cells.
+              const members = meta
+                ? bundleVisible.get(item.bundle_id!)!
+                : [item];
+              const isFirst = members[0].id === item.id;
+              const span = members.length;
+              const allSel = members.every((m) => selected.has(m.id));
+              const allPaid = members.every((m) => m.payment_received);
+              const allShipped = members.every((m) => m.shipped);
               return (
-                <tr key={item.id} className="bg-white dark:bg-zinc-950">
-                  <td className="px-4 py-3">
-                    <input
-                      type="checkbox"
-                      aria-label={`Select ${item.name}`}
-                      checked={selected.has(item.id)}
-                      onChange={() => toggle(item.id)}
-                      className="accent-blue-600"
-                    />
-                  </td>
+                <tr
+                  key={item.id}
+                  className={
+                    meta
+                      ? "bg-zinc-50/70 dark:bg-zinc-900/40"
+                      : "bg-white dark:bg-zinc-950"
+                  }
+                >
+                  {isFirst && (
+                    <td
+                      rowSpan={span}
+                      className={`border-l-4 px-4 py-3 align-middle ${
+                        meta ? meta.color.stripe : "border-l-transparent"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        aria-label={
+                          meta
+                            ? `Select bundle ${meta.num}`
+                            : `Select ${item.name}`
+                        }
+                        checked={allSel}
+                        onChange={() => toggleSelection(members)}
+                        className="accent-blue-600"
+                      />
+                    </td>
+                  )}
                   <td className="px-4 py-3">
                     <Link
                       href={`/inventory/${item.id}`}
@@ -370,29 +417,17 @@ export default function SalesTable({ items }: { items: Item[] }) {
                         Buyer: {item.buyer}
                       </span>
                     )}
-                    {item.bundle_id &&
-                      (() => {
-                        const siblings = (bundles.get(item.bundle_id) ?? [])
-                          .filter((s) => s.id !== item.id)
-                          .map((s) => s.name);
-                        if (siblings.length === 0) return null;
-                        return (
-                          <span className="mt-0.5 block text-xs text-zinc-500">
-                            <span className="mr-1 rounded-full bg-amber-50 px-1.5 py-0.5 font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300">
-                              Bundle
-                            </span>
-                            with {siblings.join(", ")}
-                            {" · "}
-                            <button
-                              type="button"
-                              onClick={() => selectBundle(item.bundle_id!)}
-                              className="text-blue-600 hover:underline"
-                            >
-                              select all
-                            </button>
-                          </span>
-                        );
-                      })()}
+                    {meta && isFirst && (
+                      <button
+                        type="button"
+                        onClick={() => selectBundle(item.bundle_id!)}
+                        title="Select all items in this bundle"
+                        className={`mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${meta.color.badge}`}
+                      >
+                        <span className={`h-2 w-2 rounded-full ${meta.color.dot}`} />
+                        Bundle {meta.num} · {span} items
+                      </button>
+                    )}
                   </td>
                   <td className="px-4 py-3">{formatDate(item.sale_date)}</td>
                   <td className="px-4 py-3">
@@ -417,37 +452,66 @@ export default function SalesTable({ items }: { items: Item[] }) {
                   >
                     {profit === null ? "—" : formatMoney(profit)}
                   </td>
-                  <td className="px-4 py-3 text-center">
-                    <input
-                      type="checkbox"
-                      aria-label={`Payment received for ${item.name}`}
-                      checked={item.payment_received}
-                      disabled={pending}
-                      onChange={() => toggleFlag(item, "payment_received")}
-                      className="h-4 w-4 accent-emerald-600"
-                    />
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <input
-                      type="checkbox"
-                      aria-label={`Shipped ${item.name}`}
-                      checked={item.shipped}
-                      disabled={pending}
-                      onChange={() => toggleFlag(item, "shipped")}
-                      className="h-4 w-4 accent-emerald-600"
-                    />
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      type="button"
-                      title="Move back to inventory (clears sale info)"
-                      disabled={pending}
-                      onClick={() => run(bulkMarkUnsold, [item.id])}
-                      className="text-xs text-zinc-500 hover:text-blue-600 hover:underline disabled:opacity-50"
+                  {isFirst && (
+                    <td
+                      rowSpan={span}
+                      className="px-4 py-3 text-center align-middle"
                     >
-                      Undo sale
-                    </button>
-                  </td>
+                      <input
+                        type="checkbox"
+                        aria-label={
+                          meta
+                            ? `Payment received for bundle ${meta.num}`
+                            : `Payment received for ${item.name}`
+                        }
+                        checked={allPaid}
+                        disabled={pending}
+                        onChange={() =>
+                          setFlag(members, "payment_received", !allPaid)
+                        }
+                        className="h-4 w-4 accent-emerald-600"
+                      />
+                    </td>
+                  )}
+                  {isFirst && (
+                    <td
+                      rowSpan={span}
+                      className="px-4 py-3 text-center align-middle"
+                    >
+                      <input
+                        type="checkbox"
+                        aria-label={
+                          meta ? `Shipped bundle ${meta.num}` : `Shipped ${item.name}`
+                        }
+                        checked={allShipped}
+                        disabled={pending}
+                        onChange={() => setFlag(members, "shipped", !allShipped)}
+                        className="h-4 w-4 accent-emerald-600"
+                      />
+                    </td>
+                  )}
+                  {isFirst && (
+                    <td
+                      rowSpan={span}
+                      className="px-4 py-3 text-right align-middle"
+                    >
+                      <button
+                        type="button"
+                        title={
+                          meta
+                            ? "Move the whole bundle back to inventory (clears sale info)"
+                            : "Move back to inventory (clears sale info)"
+                        }
+                        disabled={pending}
+                        onClick={() =>
+                          run(bulkMarkUnsold, members.map((m) => m.id))
+                        }
+                        className="text-xs text-zinc-500 hover:text-blue-600 hover:underline disabled:opacity-50"
+                      >
+                        Undo sale
+                      </button>
+                    </td>
+                  )}
                 </tr>
               );
             })}

@@ -365,6 +365,41 @@ export async function importItems(rows: unknown): Promise<{
   return { imported: inserts.length, updated: updates.length, duplicates };
 }
 
+/** Canonical number for each real (2+ item) bundle, shared by every page so a
+ * bundle keeps the same number and colour on Sales, Pending, etc. — regardless
+ * of filters or which members a given view happens to show. Numbered by the
+ * bundle's earliest created_at (oldest bundle = 1). */
+export async function getBundleNumbers(): Promise<Record<string, number>> {
+  const { supabase } = await requireUser();
+  const { data } = await supabase
+    .from("items")
+    .select("bundle_id, created_at")
+    .not("bundle_id", "is", null);
+
+  const counts = new Map<string, number>();
+  const firstSeen = new Map<string, string>();
+  for (const r of data ?? []) {
+    const bid = r.bundle_id as string;
+    counts.set(bid, (counts.get(bid) ?? 0) + 1);
+    const c = String(r.created_at ?? "");
+    const prev = firstSeen.get(bid);
+    if (prev === undefined || c < prev) firstSeen.set(bid, c);
+  }
+
+  const bundleIds = [...counts.keys()]
+    .filter((b) => (counts.get(b) ?? 0) >= 2)
+    .sort((a, b) => {
+      const ca = firstSeen.get(a) ?? "";
+      const cb = firstSeen.get(b) ?? "";
+      if (ca !== cb) return ca < cb ? -1 : 1;
+      return a < b ? -1 : 1;
+    });
+
+  const out: Record<string, number> = {};
+  bundleIds.forEach((b, i) => (out[b] = i + 1));
+  return out;
+}
+
 /** Every item the signed-in user owns — for the Download Backup feature.
  * RLS scopes this to the current user. */
 export async function exportItems(): Promise<Record<string, unknown>[]> {

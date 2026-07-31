@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getBundleNumbers } from "@/app/(app)/actions";
 import { formatMoney, type Item } from "@/lib/types";
 import SalesTable from "@/components/SalesTable";
 import FilterBar from "@/components/FilterBar";
@@ -30,6 +31,7 @@ export default async function SalesPage({
   if (category) query = query.eq("category", category);
   const { data } = await query;
   const items = (data ?? []) as Item[];
+  const bundleNumbers = await getBundleNumbers();
 
   const { data: catRows } = await supabase
     .from("items")
@@ -102,7 +104,7 @@ export default async function SalesPage({
         </div>
       ) : (
         <div className="mt-6">
-          <SalesTable items={items} />
+          <SalesTable items={items} bundleNumbers={bundleNumbers} />
         </div>
       )}
     </div>

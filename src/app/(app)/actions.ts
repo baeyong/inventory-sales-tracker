@@ -458,6 +458,73 @@ export async function bulkMarkSold(
   return { sold: idsParsed.data.length };
 }
 
+const bundleEditSchema = z.object({
+  sale_date: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Sale date is required"),
+  sale_platform: z
+    .string()
+    .trim()
+    .transform((s) => (s === "" ? null : s)),
+  buyer: optionalText,
+  // null → leave each item's payout as-is; a number → re-split evenly.
+  // z.null() must come first so a blank field isn't coerced to 0.
+  total_payout: z.union([
+    z.null(),
+    z.coerce.number({ error: "Enter a valid amount" }),
+  ]),
+  // true → (re)group the selection under one shared bundle id.
+  bundle: z.boolean(),
+});
+
+/** Edit the sale details of several already-sold items at once — the whole
+ * point being to fix a bundle (date, platform, buyer, or the split total)
+ * in one go. Leaving the total blank keeps each item's existing payout. */
+export async function bulkUpdateSale(
+  ids: unknown,
+  patch: unknown
+): Promise<{ error?: string; updated?: number }> {
+  const { supabase, user } = await requireUser();
+
+  const idsParsed = idListSchema.safeParse(ids);
+  const p = bundleEditSchema.safeParse(patch);
+  if (!idsParsed.success) return { error: "No items selected." };
+  if (!p.success) {
+    return { error: p.error.issues[0]?.message ?? "Invalid sale details." };
+  }
+
+  const shares =
+    p.data.total_payout === null
+      ? null
+      : splitPayout(p.data.total_payout, idsParsed.data.length);
+  // Only a genuine multi-item selection can be a bundle.
+  const bundleId =
+    p.data.bundle && idsParsed.data.length > 1 ? crypto.randomUUID() : null;
+
+  for (let i = 0; i < idsParsed.data.length; i++) {
+    const { error } = await supabase
+      .from("items")
+      .update({
+        sale_date: p.data.sale_date,
+        sale_platform: p.data.sale_platform,
+        buyer: p.data.buyer,
+        ...(shares && { sale_payout: shares[i] }),
+        ...(p.data.bundle && { bundle_id: bundleId }),
+      })
+      .eq("id", idsParsed.data[i])
+      .not("sale_date", "is", null) // only touch items already sold
+      .eq("user_id", user.id);
+    if (error) return { error: dbError(error.message) };
+  }
+
+  revalidatePath("/inventory");
+  revalidatePath("/sales");
+  revalidatePath("/dashboard");
+  revalidatePath("/pending");
+  return { updated: idsParsed.data.length };
+}
+
 const fulfillmentSchema = z.object({
   payment_received: z.boolean().optional(),
   shipped: z.boolean().optional(),

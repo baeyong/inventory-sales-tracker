@@ -7,6 +7,7 @@ import {
   bulkDeleteItems,
   bulkMarkUnsold,
   bulkSetCategory,
+  bulkUpdateSale,
   updateFulfillment,
 } from "@/app/(app)/actions";
 import {
@@ -25,6 +26,12 @@ export default function SalesTable({ items }: { items: Item[] }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [dialogIds, setDialogIds] = useState<string[] | null>(null);
   const [category, setCategory] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [editDate, setEditDate] = useState("");
+  const [editPlatform, setEditPlatform] = useState("");
+  const [editBuyer, setEditBuyer] = useState("");
+  const [editTotal, setEditTotal] = useState("");
+  const [editBundle, setEditBundle] = useState(true);
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
@@ -68,6 +75,53 @@ export default function SalesTable({ items }: { items: Item[] }) {
       all.findIndex((x) => x.toLowerCase() === c.toLowerCase()) === i
   );
 
+  // Pre-fill the edit modal from the current selection: shared values when
+  // every selected item agrees, blank when they differ.
+  function openEdit() {
+    if (selected.size === 0) return;
+    const picked = items.filter((i) => selected.has(i.id));
+    const common = <K extends keyof Item>(key: K): string => {
+      const vals = new Set(picked.map((i) => i[key] ?? ""));
+      return vals.size === 1 ? String([...vals][0] ?? "") : "";
+    };
+    const total = picked.reduce(
+      (sum, i) => sum + (i.sale_payout === null ? 0 : Number(i.sale_payout)),
+      0
+    );
+    setEditDate(common("sale_date"));
+    setEditPlatform(common("sale_platform"));
+    setEditBuyer(common("buyer"));
+    setEditTotal(picked.length > 1 ? total.toFixed(2) : "");
+    // A single item can't be a bundle; a multi-pick defaults to grouped.
+    setEditBundle(picked.length > 1);
+    setError(null);
+    setEditing(true);
+  }
+
+  function applyEdit() {
+    if (selected.size === 0 || editDate.trim() === "") {
+      setError("Sale date is required.");
+      return;
+    }
+    setError(null);
+    startTransition(async () => {
+      const res = await bulkUpdateSale([...selected], {
+        sale_date: editDate,
+        sale_platform: editPlatform,
+        buyer: editBuyer,
+        total_payout: editTotal.trim() === "" ? null : editTotal,
+        bundle: editBundle,
+      });
+      if (res.error) {
+        setError(res.error);
+      } else {
+        setSelected(new Set());
+        setEditing(false);
+        router.refresh();
+      }
+    });
+  }
+
   function applyCategory() {
     if (selected.size === 0 || category.trim() === "") return;
     setError(null);
@@ -82,6 +136,14 @@ export default function SalesTable({ items }: { items: Item[] }) {
       }
     });
   }
+
+  const platformSuggestions = [
+    ...new Set(
+      items
+        .map((i) => i.sale_platform)
+        .filter((p): p is string => !!p && p.trim() !== "")
+    ),
+  ];
 
   const allSelected = visible.length > 0 && visible.every((i) => selected.has(i.id));
 
@@ -173,6 +235,14 @@ export default function SalesTable({ items }: { items: Item[] }) {
               Set category
             </button>
           </span>
+          <button
+            type="button"
+            onClick={openEdit}
+            disabled={pending}
+            className="rounded-md border border-blue-300 px-3 py-1.5 font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950"
+          >
+            Edit sale details
+          </button>
           <button
             type="button"
             onClick={() => setDialogIds([...selected])}
@@ -345,6 +415,106 @@ export default function SalesTable({ items }: { items: Item[] }) {
           </tbody>
         </table>
       </div>
+
+      {editing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-6 shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
+            <h2 className="text-lg font-semibold">
+              Edit {selected.size} sale{selected.size === 1 ? "" : "s"}
+            </h2>
+            <p className="mt-1 text-sm text-zinc-500">
+              Applies to every selected item. Leave the total blank to keep each
+              item&rsquo;s current payout.
+            </p>
+            <div className="mt-4 space-y-3 text-sm">
+              <label className="block">
+                <span className="text-zinc-600 dark:text-zinc-400">Sale date</span>
+                <input
+                  type="date"
+                  value={editDate}
+                  onChange={(e) => setEditDate(e.target.value)}
+                  className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950"
+                />
+              </label>
+              <label className="block">
+                <span className="text-zinc-600 dark:text-zinc-400">Platform</span>
+                <input
+                  value={editPlatform}
+                  onChange={(e) => setEditPlatform(e.target.value)}
+                  list="sales-edit-platforms"
+                  placeholder="e.g. eBay"
+                  className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950"
+                />
+                <datalist id="sales-edit-platforms">
+                  {platformSuggestions.map((p) => (
+                    <option key={p} value={p} />
+                  ))}
+                </datalist>
+              </label>
+              <label className="block">
+                <span className="text-zinc-600 dark:text-zinc-400">
+                  Buyer / username
+                </span>
+                <input
+                  value={editBuyer}
+                  onChange={(e) => setEditBuyer(e.target.value)}
+                  placeholder="Optional"
+                  className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950"
+                />
+              </label>
+              <label className="block">
+                <span className="text-zinc-600 dark:text-zinc-400">
+                  Total payout {selected.size > 1 && "(split evenly)"}
+                </span>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={editTotal}
+                  onChange={(e) => setEditTotal(e.target.value)}
+                  placeholder="Leave blank to keep current"
+                  className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950"
+                />
+              </label>
+              {selected.size > 1 && (
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={editBundle}
+                    onChange={(e) => setEditBundle(e.target.checked)}
+                    className="h-4 w-4 accent-blue-600"
+                  />
+                  <span className="text-zinc-600 dark:text-zinc-400">
+                    Keep these grouped as one bundle
+                  </span>
+                </label>
+              )}
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => setEditing(false)}
+                className="rounded-md px-4 py-2 text-sm text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={pending}
+                onClick={applyEdit}
+                className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {pending ? "Saving…" : "Save changes"}
+              </button>
+            </div>
+            {error && (
+              <p className="mt-3 text-sm text-red-600 dark:text-red-400">
+                {error}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       {dialogIds && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">

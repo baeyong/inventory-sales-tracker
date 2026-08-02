@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { Fragment, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -74,6 +74,24 @@ export default function SalesTable({
     const arr = bundleVisible.get(it.bundle_id) ?? [];
     arr.push(it);
     bundleVisible.set(it.bundle_id, arr);
+  }
+
+  // What each bundle sold for as a whole. Summed over every member in `items`,
+  // not just the rows search left visible, so the total is the real sale total.
+  // Items still missing a payout are skipped and flagged as partial.
+  const bundleTotals = new Map<
+    string,
+    { total: number; count: number; known: number }
+  >();
+  for (const it of items) {
+    if (!it.bundle_id || !bundleMeta.has(it.bundle_id)) continue;
+    const agg = bundleTotals.get(it.bundle_id) ?? { total: 0, count: 0, known: 0 };
+    agg.count += 1;
+    if (it.sale_payout !== null) {
+      agg.total += Number(it.sale_payout);
+      agg.known += 1;
+    }
+    bundleTotals.set(it.bundle_id, agg);
   }
 
   function selectBundle(bundleId: string) {
@@ -352,19 +370,26 @@ export default function SalesTable({
               const meta = item.bundle_id
                 ? bundleMeta.get(item.bundle_id)
                 : undefined;
+              const bundleTotal = item.bundle_id
+                ? bundleTotals.get(item.bundle_id)
+                : undefined;
               // Members of this bundle (or just this item); the first member
               // carries the shared, row-spanning cells.
               const members = meta
                 ? bundleVisible.get(item.bundle_id!)!
                 : [item];
               const isFirst = members[0].id === item.id;
-              const span = members.length;
+              const isLast = members[members.length - 1].id === item.id;
+              // A bundle closes with its own total row, so the shared cells
+              // have to span that extra row too.
+              const hasSubtotal = !!meta && !!bundleTotal && bundleTotal.known > 0;
+              const span = members.length + (hasSubtotal ? 1 : 0);
               const allSel = members.every((m) => selected.has(m.id));
               const allPaid = members.every((m) => m.payment_received);
               const allShipped = members.every((m) => m.shipped);
               return (
+                <Fragment key={item.id}>
                 <tr
-                  key={item.id}
                   className={
                     meta
                       ? "bg-zinc-50/70 dark:bg-zinc-900/40"
@@ -513,6 +538,37 @@ export default function SalesTable({
                     </td>
                   )}
                 </tr>
+                {/* Closes the bundle block: a subtotal that belongs to the
+                    group, not to the last item's record. */}
+                {isLast && hasSubtotal && (
+                  <tr className="bg-zinc-50/70 dark:bg-zinc-900/40">
+                    <td
+                      colSpan={4}
+                      className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wide text-zinc-500"
+                    >
+                      Bundle {meta!.num} total
+                    </td>
+                    <td
+                      title={`What all ${bundleTotal!.count} items in bundle ${
+                        meta!.num
+                      } sold for together${
+                        bundleTotal!.known < bundleTotal!.count
+                          ? `, counting the ${bundleTotal!.known} with a payout recorded`
+                          : ""
+                      }`}
+                      className="px-4 py-2 text-right font-semibold"
+                    >
+                      {formatMoney(bundleTotal!.total)}
+                      {bundleTotal!.known < bundleTotal!.count && (
+                        <span className="ml-1 text-xs font-normal text-zinc-500">
+                          so far
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2" />
+                  </tr>
+                )}
+                </Fragment>
               );
             })}
           </tbody>

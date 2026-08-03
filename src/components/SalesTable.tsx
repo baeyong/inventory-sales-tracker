@@ -111,7 +111,6 @@ export default function SalesTable({
   // every selected item agrees, blank when they differ.
   function openEdit() {
     if (selected.size === 0) return;
-    const picked = items.filter((i) => selected.has(i.id));
     const common = <K extends keyof Item>(key: K): string => {
       const vals = new Set(picked.map((i) => i[key] ?? ""));
       return vals.size === 1 ? String([...vals][0] ?? "") : "";
@@ -176,6 +175,25 @@ export default function SalesTable({
         .filter((p): p is string => !!p && p.trim() !== "")
     ),
   ];
+
+  // Running totals for whatever is selected, so any set of sales can be sized
+  // up in place. Cost covers every pick; payout and profit only count the ones
+  // with a payout recorded, matching how the page header reports them.
+  const picked = items.filter((i) => selected.has(i.id));
+  const pickedWithPayout = picked.filter((i) => i.sale_payout !== null);
+  const pickedCost = picked.reduce(
+    (s, i) => s + Number(i.purchase_price),
+    0
+  );
+  const pickedPayout = pickedWithPayout.reduce(
+    (s, i) => s + Number(i.sale_payout),
+    0
+  );
+  const pickedProfit = pickedWithPayout.reduce(
+    (s, i) => s + Number(i.sale_payout) - Number(i.purchase_price),
+    0
+  );
+  const pickedMissing = picked.length - pickedWithPayout.length;
 
   const allSelected = visible.length > 0 && visible.every((i) => selected.has(i.id));
 
@@ -268,7 +286,23 @@ export default function SalesTable({
       </div>
       {selected.size > 0 && (
         <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <span>{selected.size} selected</span>
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="font-medium">{selected.size} selected</span>
+            <span className="text-zinc-500">
+              {formatMoney(pickedCost)} cost · {formatMoney(pickedPayout)} payout
+              {" · "}
+              <span
+                className={`font-medium ${
+                  pickedProfit >= 0
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-red-600 dark:text-red-400"
+                }`}
+              >
+                {formatMoney(pickedProfit)} profit
+              </span>
+              {pickedMissing > 0 && ` · ${pickedMissing} missing a payout`}
+            </span>
+          </span>
           <span className="flex items-center gap-1">
             <input
               value={category}

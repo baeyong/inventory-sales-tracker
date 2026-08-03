@@ -89,6 +89,12 @@ export default function InventoryTable({ items }: { items: Item[] }) {
     });
   }
 
+  // What the current selection cost. Everything here is unsold, so cost is the
+  // only figure an inventory item carries.
+  const pickedCost = items
+    .filter((i) => selected.has(i.id))
+    .reduce((s, i) => s + Number(i.purchase_price), 0);
+
   const allSelected = visible.length > 0 && visible.every((i) => selected.has(i.id));
 
   function toggle(id: string) {
@@ -190,7 +196,10 @@ export default function InventoryTable({ items }: { items: Item[] }) {
       </div>
       {selected.size > 0 && (
         <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <span>{selected.size} selected</span>
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="font-medium">{selected.size} selected</span>
+            <span className="text-zinc-500">{formatMoney(pickedCost)} cost</span>
+          </span>
           <span className="flex items-center gap-1">
             <input
               value={category}

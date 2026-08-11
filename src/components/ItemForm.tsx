@@ -9,6 +9,13 @@ import {
   type CardCondition,
   type Item,
 } from "@/lib/types";
+import {
+  PLATFORMS,
+  PLATFORM_OPTIONS,
+  autoQuery,
+  defaultPlatformForCategory,
+  marketLink,
+} from "@/lib/market";
 
 const inputCls =
   "mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950";
@@ -28,11 +35,26 @@ export default function ItemForm({
   const [condition, setCondition] = useState<CardCondition>(
     item?.condition ?? "raw"
   );
+  const [marketPlatform, setMarketPlatform] = useState<string>(
+    item?.market_platform ?? ""
+  );
+  const [marketSearch, setMarketSearch] = useState<string>(
+    item?.market_search ?? ""
+  );
   // After a failed submit the server echoes what was typed; prefer that over
   // the stored item so the form never loses the user's input.
   const v = state?.values;
 
   const isCard = isCardCategory(category);
+  // Live market link that reflects unsaved edits to platform/search/category.
+  const marketPreview = item
+    ? marketLink({
+        ...item,
+        category,
+        market_platform: marketPlatform || null,
+        market_search: marketSearch || null,
+      })
+    : null;
   const suggestions = [...DEFAULT_CATEGORIES, ...categories].filter(
     (c, i, all) =>
       all.findIndex((x) => x.toLowerCase() === c.toLowerCase()) === i
@@ -212,6 +234,71 @@ export default function ItemForm({
         />
         <span className="font-medium">Listed for sale</span>
       </label>
+
+      {item && (
+        <div className="space-y-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-sm font-medium">Market value lookup</span>
+            {marketPreview && (
+              <a
+                href={marketPreview.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+              >
+                Open {marketPreview.label} ↗
+              </a>
+            )}
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <label className="block text-sm">
+              <span className="text-zinc-600 dark:text-zinc-400">Platform</span>
+              <select
+                name="market_platform"
+                value={marketPlatform}
+                onChange={(e) => setMarketPlatform(e.target.value)}
+                className={inputCls}
+              >
+                <option value="">
+                  Category default (
+                  {PLATFORMS[defaultPlatformForCategory(category)]?.label})
+                </option>
+                {PLATFORM_OPTIONS.map((p) => (
+                  <option key={p.key} value={p.key}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-sm">
+              <span className="text-zinc-600 dark:text-zinc-400">
+                Search words or full URL
+              </span>
+              <input
+                name="market_search"
+                value={marketSearch}
+                onChange={(e) => setMarketSearch(e.target.value)}
+                placeholder={autoQuery(item) || "item name"}
+                className={inputCls}
+              />
+            </label>
+          </div>
+          <p className="text-xs text-zinc-500">
+            Blank auto-searches from this item&apos;s details. Paste a full URL
+            (e.g. an exact StockX page) to link straight there.
+            {marketPreview && !marketPreview.custom && marketPreview.query && (
+              <>
+                {" "}
+                · Searching:{" "}
+                <span className="font-medium">{marketPreview.query}</span>
+              </>
+            )}
+            {marketPlatform === "onethirtypoint" && (
+              <> · 130point opens its search tool — paste the query there.</>
+            )}
+          </p>
+        </div>
+      )}
 
       <label className="block text-sm">
         <span className="font-medium">Notes</span>

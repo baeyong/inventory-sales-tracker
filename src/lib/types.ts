@@ -44,6 +44,8 @@ export interface Item {
   payment_received: boolean;
   shipped: boolean;
   bundle_id: string | null; // shared across items sold together
+  market_platform: string | null; // marketplace key for value lookup (null = category default)
+  market_search: string | null; // search-words or full-URL override (null = auto)
   created_at: string;
   updated_at: string;
 }

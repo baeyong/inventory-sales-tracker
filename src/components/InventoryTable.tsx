@@ -19,6 +19,7 @@ import {
 } from "@/lib/types";
 import { matchesSearch } from "@/lib/search";
 import { sortItems, type SortDir, type SortKey } from "@/lib/sort";
+import { marketLink } from "@/lib/market";
 import SortHeader from "@/components/SortHeader";
 
 function cardDetails(item: Item): string | null {
@@ -327,6 +328,15 @@ export default function InventoryTable({ items }: { items: Item[] }) {
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex justify-end gap-2">
+                    <a
+                      href={marketLink(item).url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={`Look up market value on ${marketLink(item).label}`}
+                      className="rounded-md border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    >
+                      Value ↗
+                    </a>
                     <Link
                       href={`/inventory/${item.id}/sell`}
                       className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700"

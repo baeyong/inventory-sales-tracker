@@ -25,6 +25,8 @@ const CSV_COLUMNS = [
   "payment_received",
   "shipped",
   "bundle_id",
+  "market_platform",
+  "market_search",
   "description",
   "created_at",
   "updated_at",

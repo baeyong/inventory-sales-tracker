@@ -74,6 +74,8 @@ const itemSchema = z
     condition: z.enum(["raw", "graded"]).or(z.literal("").transform(() => null)),
     grade_company: optionalText,
     grade: optionalText,
+    market_platform: optionalText,
+    market_search: optionalText,
   })
   .transform((v) =>
     /card/i.test(v.category)
@@ -119,6 +121,8 @@ function itemPayload(formData: FormData) {
     condition: formData.get("condition") ?? "",
     grade_company: formData.get("grade_company"),
     grade: formData.get("grade"),
+    market_platform: formData.get("market_platform"),
+    market_search: formData.get("market_search"),
   });
 }
 

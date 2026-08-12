@@ -69,12 +69,13 @@ export default function RippedTable({ items }: { items: Item[] }) {
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
-        <table className="w-full min-w-[720px] text-sm">
+        <table className="w-full min-w-[820px] text-sm">
           <thead className="bg-zinc-50 text-left text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
             <tr>
               <SortHeader label="Product" sortKey="name" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
               <SortHeader label="Type" sortKey="category" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
               <SortHeader label="Bought at" sortKey="purchase_platform" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
+              <SortHeader label="Purchased" sortKey="purchase_date" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
               <SortHeader label="Cost" sortKey="purchase_price" activeKey={sortKey} dir={sortDir} onSort={toggleSort} align="right" />
               <SortHeader label="Opened" sortKey="opened_at" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
               <th className="px-4 py-3" />
@@ -103,6 +104,7 @@ export default function RippedTable({ items }: { items: Item[] }) {
                   </span>
                 </td>
                 <td className="px-4 py-3">{item.purchase_platform ?? "—"}</td>
+                <td className="px-4 py-3">{formatDate(item.purchase_date)}</td>
                 <td className="px-4 py-3 text-right">
                   {formatMoney(Number(item.purchase_price))}
                 </td>

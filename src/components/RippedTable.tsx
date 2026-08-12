@@ -6,14 +6,31 @@ import { useRouter } from "next/navigation";
 import { bulkMarkUnopened } from "@/app/(app)/actions";
 import { formatDate, formatMoney, isCardCategory, type Item } from "@/lib/types";
 import { matchesSearch } from "@/lib/search";
+import { sortItems, type SortDir, type SortKey } from "@/lib/sort";
+import SortHeader from "@/components/SortHeader";
 
 export default function RippedTable({ items }: { items: Item[] }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const visible = items.filter((i) => matchesSearch(i, search));
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  }
+
+  const visible = sortItems(
+    items.filter((i) => matchesSearch(i, search)),
+    sortKey,
+    sortDir
+  );
 
   function undo(id: string) {
     setError(null);
@@ -55,11 +72,11 @@ export default function RippedTable({ items }: { items: Item[] }) {
         <table className="w-full min-w-[720px] text-sm">
           <thead className="bg-zinc-50 text-left text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
             <tr>
-              <th className="px-4 py-3">Product</th>
-              <th className="px-4 py-3">Type</th>
-              <th className="px-4 py-3">Bought at</th>
-              <th className="px-4 py-3 text-right">Cost</th>
-              <th className="px-4 py-3">Opened</th>
+              <SortHeader label="Product" sortKey="name" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
+              <SortHeader label="Type" sortKey="category" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
+              <SortHeader label="Bought at" sortKey="purchase_platform" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
+              <SortHeader label="Cost" sortKey="purchase_price" activeKey={sortKey} dir={sortDir} onSort={toggleSort} align="right" />
+              <SortHeader label="Opened" sortKey="opened_at" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
               <th className="px-4 py-3" />
             </tr>
           </thead>

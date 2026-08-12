@@ -1,8 +1,8 @@
 "use client";
 
-import type { SortDir, SortKey } from "@/lib/sort";
+import type { SortDir } from "@/lib/sort";
 
-export default function SortHeader({
+export default function SortHeader<K extends string>({
   label,
   sortKey,
   activeKey,
@@ -12,10 +12,10 @@ export default function SortHeader({
   className = "",
 }: {
   label: string;
-  sortKey: SortKey;
-  activeKey: SortKey | null;
+  sortKey: K;
+  activeKey: K | null;
   dir: SortDir;
-  onSort: (key: SortKey) => void;
+  onSort: (key: K) => void;
   align?: "left" | "right" | "center";
   className?: string;
 }) {

@@ -4,18 +4,36 @@ import { useState } from "react";
 import Link from "next/link";
 import { deleteExpense } from "@/app/(app)/actions";
 import { formatDate, formatMoney, type Expense } from "@/lib/types";
+import {
+  sortExpenses,
+  type ExpenseSortKey,
+  type SortDir,
+} from "@/lib/sort";
+import SortHeader from "@/components/SortHeader";
 
 export default function ExpensesTable({ expenses }: { expenses: Expense[] }) {
   const [search, setSearch] = useState("");
+  const [sortKey, setSortKey] = useState<ExpenseSortKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  function toggleSort(key: ExpenseSortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  }
 
   const q = search.trim().toLowerCase();
-  const visible = q
+  const filtered = q
     ? expenses.filter((e) =>
         [e.name, e.source, e.notes]
           .filter(Boolean)
           .some((s) => (s as string).toLowerCase().includes(q))
       )
     : expenses;
+  const visible = sortExpenses(filtered, sortKey, sortDir);
 
   return (
     <div>
@@ -45,10 +63,10 @@ export default function ExpensesTable({ expenses }: { expenses: Expense[] }) {
         <table className="w-full min-w-[720px] text-sm">
           <thead className="bg-zinc-50 text-left text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
             <tr>
-              <th className="px-4 py-3">Expense</th>
-              <th className="px-4 py-3 text-right">Amount</th>
-              <th className="px-4 py-3">Date</th>
-              <th className="px-4 py-3">Source</th>
+              <SortHeader label="Expense" sortKey="name" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
+              <SortHeader label="Amount" sortKey="amount" activeKey={sortKey} dir={sortDir} onSort={toggleSort} align="right" />
+              <SortHeader label="Date" sortKey="spent_on" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
+              <SortHeader label="Source" sortKey="source" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
               <th className="px-4 py-3">Notes</th>
               <th className="px-4 py-3" />
             </tr>

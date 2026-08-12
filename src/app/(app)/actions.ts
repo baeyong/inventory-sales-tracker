@@ -853,3 +853,86 @@ export async function listExpenses(): Promise<Record<string, unknown>[]> {
   if (error) throw new Error(error.message);
   return (data ?? []) as Record<string, unknown>[];
 }
+
+// Real DB columns, so a restore only writes known fields (an old backup missing
+// newer columns just falls back to their defaults).
+const ITEM_COLUMNS = [
+  "id", "category", "name", "description", "purchase_price", "purchase_date",
+  "purchase_platform", "listed", "quantity", "card_set", "card_number",
+  "player", "condition", "grade_company", "grade", "sale_date", "sale_platform",
+  "sale_payout", "buyer", "payment_received", "shipped", "bundle_id",
+  "opened_at", "market_platform", "market_search", "created_at", "updated_at",
+] as const;
+const EXPENSE_COLUMNS = [
+  "id", "name", "amount", "spent_on", "source", "notes", "created_at",
+  "updated_at",
+] as const;
+
+function pickColumns(
+  row: unknown,
+  cols: readonly string[],
+  userId: string
+): Record<string, unknown> {
+  const src = (row && typeof row === "object" ? row : {}) as Record<
+    string,
+    unknown
+  >;
+  const out: Record<string, unknown> = {};
+  for (const c of cols) {
+    if (c in src && src[c] !== undefined) out[c] = src[c];
+  }
+  if (!out.id) out.id = crypto.randomUUID();
+  out.user_id = userId; // always the signed-in user, whatever the file said
+  return out;
+}
+
+/** Restore from a Download-JSON snapshot: re-create every item and expense for
+ * the current user. Upserts by id, so it's safe to re-run and never duplicates;
+ * it only adds/overwrites, never deletes. Accepts the current object form
+ * ({ items, expenses }) or a bare items array from an older backup. */
+export async function restoreBackup(
+  payload: unknown
+): Promise<{ error?: string; items?: number; expenses?: number }> {
+  const { supabase, user } = await requireUser();
+
+  let items: unknown[] = [];
+  let expenses: unknown[] = [];
+  if (Array.isArray(payload)) {
+    items = payload;
+  } else if (payload && typeof payload === "object") {
+    const p = payload as Record<string, unknown>;
+    if (Array.isArray(p.items)) items = p.items;
+    if (Array.isArray(p.expenses)) expenses = p.expenses;
+  } else {
+    return { error: "Unrecognized backup file." };
+  }
+  if (items.length === 0 && expenses.length === 0) {
+    return { error: "Nothing to restore in this file." };
+  }
+  if (items.length > 20000 || expenses.length > 20000) {
+    return { error: "Backup is too large to restore in one go." };
+  }
+
+  if (items.length > 0) {
+    const rows = items.map((r) => pickColumns(r, ITEM_COLUMNS, user.id));
+    const { error } = await supabase.from("items").upsert(rows, {
+      onConflict: "id",
+    });
+    if (error) return { error: dbError(error.message) };
+  }
+  if (expenses.length > 0) {
+    const rows = expenses.map((r) => pickColumns(r, EXPENSE_COLUMNS, user.id));
+    const { error } = await supabase.from("expenses").upsert(rows, {
+      onConflict: "id",
+    });
+    if (error) return { error: dbError(error.message) };
+  }
+
+  revalidatePath("/inventory");
+  revalidatePath("/sales");
+  revalidatePath("/pending");
+  revalidatePath("/ripped");
+  revalidatePath("/expenses");
+  revalidatePath("/dashboard");
+  return { items: items.length, expenses: expenses.length };
+}

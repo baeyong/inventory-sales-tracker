@@ -94,16 +94,25 @@ export default function BackupButtons() {
         );
         return;
       }
-      const rows = await exportItems();
-      if (kind === "csv") {
-        download(`resale-backup-${stamp}.csv`, toCsv(rows), "text/csv");
-      } else {
+      if (kind === "json") {
+        // Complete, restorable snapshot: everything you own, both tables.
+        const [items, expenses] = await Promise.all([
+          exportItems(),
+          listExpenses(),
+        ]);
+        const snapshot = { version: 1, exported_at: stamp, items, expenses };
         download(
           `resale-backup-${stamp}.json`,
-          JSON.stringify(rows, null, 2),
+          JSON.stringify(snapshot, null, 2),
           "application/json"
         );
+        setStatus(
+          `Saved ${items.length} item${items.length === 1 ? "" : "s"}, ${expenses.length} expense${expenses.length === 1 ? "" : "s"}.`
+        );
+        return;
       }
+      const rows = await exportItems();
+      download(`resale-backup-${stamp}.csv`, toCsv(rows), "text/csv");
       setStatus(`Saved ${rows.length} item${rows.length === 1 ? "" : "s"}.`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Export failed.");

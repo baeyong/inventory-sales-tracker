@@ -1,4 +1,5 @@
 import BackupButtons from "@/components/BackupButtons";
+import RestoreButton from "@/components/RestoreButton";
 import ImportClient from "@/components/ImportClient";
 
 export const metadata = { title: "Data · Resale Tracker" };
@@ -24,6 +25,18 @@ export default function DataPage() {
           proceeds, profit, ripped cost, and expenses, plus clean line items.
         </p>
         <BackupButtons />
+      </section>
+
+      <section className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
+        <h2 className="font-semibold">Restore from backup</h2>
+        <p className="mb-4 mt-1 max-w-2xl text-sm text-zinc-500">
+          Rebuild from a <span className="font-medium">Download JSON</span> file
+          — it re-creates every item and expense exactly, ripped status and
+          bundles included. Safe to re-run: records with the same id are
+          overwritten and new ones added, nothing is deleted. (For messy
+          spreadsheets from elsewhere, use Import below instead.)
+        </p>
+        <RestoreButton />
       </section>
 
       <section className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">

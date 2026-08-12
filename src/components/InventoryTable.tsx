@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   bulkDeleteItems,
+  bulkMarkOpened,
   bulkMarkSold,
   bulkSetCategory,
   updateFulfillment,
@@ -49,6 +50,10 @@ export default function InventoryTable({ items }: { items: Item[] }) {
   const [bundlePlatform, setBundlePlatform] = useState("");
   const [bundleTotal, setBundleTotal] = useState("");
   const [bundleBuyer, setBundleBuyer] = useState("");
+  const [ripOpen, setRipOpen] = useState(false);
+  const [ripDate, setRipDate] = useState(() =>
+    new Date().toISOString().slice(0, 10)
+  );
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -149,6 +154,21 @@ export default function InventoryTable({ items }: { items: Item[] }) {
       ? bundleTotalNum / selected.size
       : null;
 
+  function ripSelected() {
+    if (selected.size === 0 || ripDate === "") return;
+    setError(null);
+    startTransition(async () => {
+      const res = await bulkMarkOpened([...selected], ripDate);
+      if (res.error) {
+        setError(res.error);
+      } else {
+        setSelected(new Set());
+        setRipOpen(false);
+        router.push("/ripped");
+      }
+    });
+  }
+
   function sellBundle() {
     if (selected.size === 0 || !bundleValid) return;
     setError(null);
@@ -234,6 +254,17 @@ export default function InventoryTable({ items }: { items: Item[] }) {
             className="rounded-md bg-emerald-600 px-3 py-1.5 font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
           >
             Sell together
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setError(null);
+              setRipOpen(true);
+            }}
+            disabled={pending}
+            className="rounded-md border border-violet-300 px-3 py-1.5 font-medium text-violet-700 hover:bg-violet-50 disabled:opacity-50 dark:border-violet-900 dark:text-violet-300 dark:hover:bg-violet-950"
+          >
+            Rip open
           </button>
           <button
             type="button"
@@ -356,6 +387,56 @@ export default function InventoryTable({ items }: { items: Item[] }) {
           </tbody>
         </table>
       </div>
+
+      {ripOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-6 shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
+            <h2 className="text-lg font-semibold">
+              Rip open {selected.size} item{selected.size === 1 ? "" : "s"}?
+            </h2>
+            <p className="mt-1 text-sm text-zinc-500">
+              This moves {selected.size === 1 ? "it" : "them"} out of inventory
+              into{" "}
+              <span className="font-medium">For the Love of the Game</span>,
+              keeping the cost. Add whatever you pull as separate $0-cost items.
+            </p>
+            <label className="mt-4 block text-sm">
+              <span className="font-medium">Date opened</span>
+              <input
+                type="date"
+                value={ripDate}
+                onChange={(e) => setRipDate(e.target.value)}
+                className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+              />
+            </label>
+
+            {error && (
+              <p className="mt-3 text-sm text-red-600 dark:text-red-400">
+                {error}
+              </p>
+            )}
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => setRipOpen(false)}
+                className="rounded-md px-4 py-2 text-sm text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={pending || ripDate === ""}
+                onClick={ripSelected}
+                className="rounded-md bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
+              >
+                {pending ? "Opening…" : "Rip open"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {bundleOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">

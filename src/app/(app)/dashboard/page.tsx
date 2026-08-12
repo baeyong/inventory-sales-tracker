@@ -2,7 +2,6 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { formatMoney, type Item } from "@/lib/types";
 import ProfitChart, { type MonthPoint } from "@/components/ProfitChart";
-import BackupButtons from "@/components/BackupButtons";
 
 export const metadata = { title: "Dashboard · Resale Tracker" };
 
@@ -62,7 +61,9 @@ export default async function DashboardPage() {
   const { data } = await supabase.from("items").select("*");
   const items = (data ?? []) as Item[];
 
-  const unsold = items.filter((i) => !i.sale_date);
+  // Opened ("ripped") product is neither in stock nor sold — it's consumed, so
+  // it stays out of both the inventory and sales figures.
+  const unsold = items.filter((i) => !i.sale_date && !i.opened_at);
   const sold = items.filter((i) => i.sale_date);
   // Profit math only counts sales whose payout is known.
   const soldKnown = sold.filter((i) => i.sale_payout !== null);
@@ -103,6 +104,7 @@ export default async function DashboardPage() {
     { inStock: number; invested: number; soldCount: number; revenue: number; catProfit: number }
   >();
   for (const i of items) {
+    if (i.opened_at && !i.sale_date) continue; // ripped product isn't in stock
     const row = byCategory.get(i.category) ?? {
       inStock: 0,
       invested: 0,
@@ -258,15 +260,6 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      <div className="mt-6 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
-        <h2 className="font-semibold">Backup your data</h2>
-        <p className="mb-4 mt-1 text-sm text-zinc-500">
-          Download a copy of everything to your computer. CSV opens in Excel or
-          Google Sheets (handy for taxes); JSON is a complete snapshot. Keep a
-          recent copy somewhere safe like Google Drive.
-        </p>
-        <BackupButtons />
-      </div>
     </div>
   );
 }

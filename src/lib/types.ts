@@ -44,8 +44,21 @@ export interface Item {
   payment_received: boolean;
   shipped: boolean;
   bundle_id: string | null; // shared across items sold together
+  opened_at: string | null; // YYYY-MM-DD it was ripped open, null = not opened
   market_platform: string | null; // marketplace key for value lookup (null = category default)
   market_search: string | null; // search-words or full-URL override (null = auto)
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Expense {
+  id: string;
+  user_id: string;
+  name: string;
+  amount: number;
+  spent_on: string | null; // YYYY-MM-DD, when it was bought
+  source: string | null; // where it was bought from
+  notes: string | null;
   created_at: string;
   updated_at: string;
 }

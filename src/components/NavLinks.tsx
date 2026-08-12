@@ -8,7 +8,9 @@ const LINKS = [
   { href: "/inventory", label: "Inventory" },
   { href: "/sales", label: "Sales" },
   { href: "/pending", label: "Pending" },
-  { href: "/import", label: "Import" },
+  { href: "/ripped", label: "For the Love of the Game" },
+  { href: "/expenses", label: "Expenses" },
+  { href: "/data", label: "Data" },
 ];
 
 export default function NavLinks() {

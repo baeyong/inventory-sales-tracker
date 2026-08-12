@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { exportItems } from "@/app/(app)/actions";
+import { exportItems, listExpenses } from "@/app/(app)/actions";
+import { buildTaxCsv } from "@/lib/taxReport";
 
 // Human-friendly column order for the CSV; any extra fields are appended.
 const CSV_COLUMNS = [
@@ -25,6 +26,7 @@ const CSV_COLUMNS = [
   "payment_received",
   "shipped",
   "bundle_id",
+  "opened_at",
   "market_platform",
   "market_search",
   "description",
@@ -67,17 +69,32 @@ function download(filename: string, content: string, type: string) {
 }
 
 export default function BackupButtons() {
-  const [busy, setBusy] = useState<"csv" | "json" | null>(null);
+  const [busy, setBusy] = useState<"csv" | "json" | "tax" | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function run(kind: "csv" | "json") {
+  async function run(kind: "csv" | "json" | "tax") {
     setBusy(kind);
     setError(null);
     setStatus(null);
     try {
-      const rows = await exportItems();
       const stamp = new Date().toISOString().slice(0, 10);
+      if (kind === "tax") {
+        const [rows, expenses] = await Promise.all([
+          exportItems(),
+          listExpenses(),
+        ]);
+        download(
+          `tax-summary-${stamp}.csv`,
+          buildTaxCsv(rows, expenses),
+          "text/csv"
+        );
+        setStatus(
+          `Saved tax summary — ${rows.length} item${rows.length === 1 ? "" : "s"}, ${expenses.length} expense${expenses.length === 1 ? "" : "s"}.`
+        );
+        return;
+      }
+      const rows = await exportItems();
       if (kind === "csv") {
         download(`resale-backup-${stamp}.csv`, toCsv(rows), "text/csv");
       } else {
@@ -112,6 +129,14 @@ export default function BackupButtons() {
         className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
       >
         {busy === "json" ? "Preparing…" : "Download JSON"}
+      </button>
+      <button
+        type="button"
+        onClick={() => run("tax")}
+        disabled={busy !== null}
+        className="rounded-md border border-blue-300 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950"
+      >
+        {busy === "tax" ? "Preparing…" : "Tax summary (CSV)"}
       </button>
       {status && (
         <span className="text-sm text-emerald-600 dark:text-emerald-400">

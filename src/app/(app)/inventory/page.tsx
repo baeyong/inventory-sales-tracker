@@ -23,6 +23,7 @@ export default async function InventoryPage({
     .from("items")
     .select("*")
     .is("sale_date", null)
+    .is("opened_at", null)
     .order("created_at", { ascending: false });
   if (category) query = query.eq("category", category);
   if (listed !== null) query = query.eq("listed", listed);
@@ -32,7 +33,8 @@ export default async function InventoryPage({
   const { data: catRows } = await supabase
     .from("items")
     .select("category")
-    .is("sale_date", null);
+    .is("sale_date", null)
+    .is("opened_at", null);
   const categories = [
     ...new Set((catRows ?? []).map((r) => r.category as string)),
   ].sort();
@@ -78,7 +80,7 @@ export default async function InventoryPage({
           ) : (
             <>
               Nothing in inventory yet. Add your first item or{" "}
-              <Link href="/import" className="text-blue-600 hover:underline">
+              <Link href="/data" className="text-blue-600 hover:underline">
                 import a spreadsheet
               </Link>
               .

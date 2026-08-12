@@ -677,6 +677,62 @@ export async function bulkMarkUnsold(
   return { returned: count ?? 0 };
 }
 
+/** Rip open sealed product: it leaves inventory for the "For the Love of the
+ * Game" page, keeping its cost. Pulled cards are added separately as their own
+ * $0-cost inventory items. Can't open something already sold. */
+export async function bulkMarkOpened(
+  ids: unknown,
+  openedDate: unknown
+): Promise<{ error?: string; opened?: number }> {
+  const { supabase, user } = await requireUser();
+
+  const idsParsed = idListSchema.safeParse(ids);
+  const dateParsed = z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Opened date is required")
+    .safeParse(openedDate);
+  if (!idsParsed.success) return { error: "No items selected." };
+  if (!dateParsed.success) {
+    return { error: dateParsed.error.issues[0]?.message ?? "Invalid date." };
+  }
+
+  const { error, count } = await supabase
+    .from("items")
+    .update({ opened_at: dateParsed.data }, { count: "exact" })
+    .in("id", idsParsed.data)
+    .is("sale_date", null) // can't rip something already sold
+    .eq("user_id", user.id);
+  if (error) return { error: dbError(error.message) };
+
+  revalidatePath("/inventory");
+  revalidatePath("/ripped");
+  revalidatePath("/dashboard");
+  return { opened: count ?? 0 };
+}
+
+/** Move opened product back into inventory (undo a rip). */
+export async function bulkMarkUnopened(
+  ids: unknown
+): Promise<{ error?: string; returned?: number }> {
+  const { supabase, user } = await requireUser();
+
+  const parsed = idListSchema.safeParse(ids);
+  if (!parsed.success) return { error: "No items selected." };
+
+  const { error, count } = await supabase
+    .from("items")
+    .update({ opened_at: null }, { count: "exact" })
+    .in("id", parsed.data)
+    .eq("user_id", user.id);
+  if (error) return { error: error.message };
+
+  revalidatePath("/inventory");
+  revalidatePath("/ripped");
+  revalidatePath("/dashboard");
+  return { returned: count ?? 0 };
+}
+
 export async function markUnsold(formData: FormData) {
   const { supabase, user } = await requireUser();
 
@@ -700,4 +756,100 @@ export async function markUnsold(formData: FormData) {
   revalidatePath("/inventory");
   revalidatePath("/sales");
   redirect("/inventory");
+}
+
+// --- Miscellaneous business expenses ---
+
+const expenseSchema = z.object({
+  name: z.string().trim().min(1, "Name is required"),
+  amount: moneyField,
+  spent_on: dateField,
+  source: optionalText,
+  notes: optionalText,
+});
+
+function expensePayload(formData: FormData) {
+  return expenseSchema.safeParse({
+    name: formData.get("name"),
+    amount: formData.get("amount"),
+    spent_on: formData.get("spent_on"),
+    source: formData.get("source"),
+    notes: formData.get("notes"),
+  });
+}
+
+export async function createExpense(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const { supabase, user } = await requireUser();
+
+  const parsed = expensePayload(formData);
+  if (!parsed.success) {
+    return { error: firstError(parsed.error), values: formValues(formData) };
+  }
+
+  const { error } = await supabase
+    .from("expenses")
+    .insert({ ...parsed.data, user_id: user.id });
+  if (error) {
+    return { error: dbError(error.message), values: formValues(formData) };
+  }
+
+  revalidatePath("/expenses");
+  revalidatePath("/dashboard");
+  redirect("/expenses");
+}
+
+export async function updateExpense(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const { supabase, user } = await requireUser();
+
+  const id = String(formData.get("id") ?? "");
+  if (!id) return { error: "Missing expense id." };
+
+  const parsed = expensePayload(formData);
+  if (!parsed.success) {
+    return { error: firstError(parsed.error), values: formValues(formData) };
+  }
+
+  const { error } = await supabase
+    .from("expenses")
+    .update(parsed.data)
+    .eq("id", id)
+    .eq("user_id", user.id);
+  if (error) {
+    return { error: dbError(error.message), values: formValues(formData) };
+  }
+
+  revalidatePath("/expenses");
+  revalidatePath("/dashboard");
+  redirect("/expenses");
+}
+
+export async function deleteExpense(formData: FormData) {
+  const { supabase, user } = await requireUser();
+
+  const id = String(formData.get("id") ?? "");
+  if (id) {
+    await supabase.from("expenses").delete().eq("id", id).eq("user_id", user.id);
+  }
+
+  revalidatePath("/expenses");
+  revalidatePath("/dashboard");
+  redirect("/expenses");
+}
+
+/** Every expense the signed-in user owns — for the expenses page and the Tax
+ * Summary export. RLS scopes this to the current user. */
+export async function listExpenses(): Promise<Record<string, unknown>[]> {
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase
+    .from("expenses")
+    .select("*")
+    .order("spent_on", { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as Record<string, unknown>[];
 }

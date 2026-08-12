@@ -18,11 +18,13 @@ export default function DataPage() {
       <section className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
         <h2 className="font-semibold">Export &amp; backup</h2>
         <p className="mb-4 mt-1 max-w-2xl text-sm text-zinc-500">
-          Download a copy of everything to your computer. CSV/JSON are complete
-          snapshots — keep one somewhere safe like Google Drive.{" "}
-          <span className="font-medium">Tax summary</span> is an
-          accountant-friendly report: totals and a by-year breakdown of
-          proceeds, profit, ripped cost, and expenses, plus clean line items.
+          <span className="font-medium">Download JSON</span> is your real
+          backup — a complete snapshot of everything (items and expenses) that
+          Restore below can rebuild exactly. Keep a copy somewhere safe like
+          Google Drive.{" "}
+          <span className="font-medium">Tax summary</span> is a readable report
+          for your accountant: totals and a by-year breakdown of proceeds,
+          profit, ripped cost, and expenses, plus clean line items.
         </p>
         <BackupButtons />
       </section>

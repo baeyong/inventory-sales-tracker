@@ -41,16 +41,24 @@ export default async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const path = request.nextUrl.pathname;
-  const isAuthPage = path.startsWith("/login") || path.startsWith("/signup");
+  const isAuthPage =
+    path.startsWith("/login") ||
+    path.startsWith("/signup") ||
+    path.startsWith("/forgot-password");
+  // The emailed recovery link hits /auth/callback with no session yet — it is
+  // what creates one — so it must never be redirected to /login.
+  // /update-password is deliberately NOT an auth page: the callback signs the
+  // user in first, and a logged-in user must be able to reach it.
+  const isCallback = path.startsWith("/auth/callback");
 
-  if (!user && !isAuthPage && path !== "/") {
+  if (!user && !isAuthPage && !isCallback && path !== "/") {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.search = "";
     return NextResponse.redirect(url);
   }
 
-  if (user && (isAuthPage || path === "/")) {
+  if (user && !isCallback && (isAuthPage || path === "/")) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     url.search = "";

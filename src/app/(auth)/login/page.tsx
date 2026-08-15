@@ -1,11 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { Suspense, useActionState } from "react";
+import { useSearchParams } from "next/navigation";
 import { signIn } from "../actions";
 
+// useSearchParams opts this subtree out of prerendering, so it needs its own
+// Suspense boundary or the static build of /login fails.
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const [state, action, pending] = useActionState(signIn, null);
+  // Set when an emailed link was expired or already used.
+  const linkError = useSearchParams().get("error");
 
   return (
     <main className="flex min-h-screen items-center justify-center p-4">
@@ -26,7 +39,15 @@ export default function LoginPage() {
             />
           </label>
           <label className="block text-sm">
-            <span className="font-medium">Password</span>
+            <span className="flex items-center justify-between">
+              <span className="font-medium">Password</span>
+              <Link
+                href="/forgot-password"
+                className="text-xs font-normal text-blue-600 hover:underline"
+              >
+                Forgot password?
+              </Link>
+            </span>
             <input
               type="password"
               name="password"
@@ -35,9 +56,9 @@ export default function LoginPage() {
               className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950"
             />
           </label>
-          {state?.error && (
+          {(state?.error ?? linkError) && (
             <p className="text-sm text-red-600 dark:text-red-400">
-              {state.error}
+              {state?.error ?? linkError}
             </p>
           )}
           <button

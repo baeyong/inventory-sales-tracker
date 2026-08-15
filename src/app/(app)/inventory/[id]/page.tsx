@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { formatMoney, type Item } from "@/lib/types";
+import { formatDate, formatMoney, type Item } from "@/lib/types";
 import ItemForm from "@/components/ItemForm";
 import SellForm from "@/components/SellForm";
+import OpenedForm from "@/components/OpenedForm";
 import DeleteButton from "@/components/DeleteButton";
 
 export const metadata = { title: "Edit item · Resale Tracker" };
@@ -74,6 +75,17 @@ export default async function ItemPage({
             defaultBuyer={item.buyer}
             submitLabel="Update sale"
           />
+        </div>
+      )}
+
+      {item.opened_at && (
+        <div className="max-w-2xl rounded-xl border border-violet-200 bg-violet-50/50 p-5 dark:border-violet-900 dark:bg-violet-950/30">
+          <h2 className="font-semibold">Opened details</h2>
+          <p className="mt-1 mb-4 text-sm text-zinc-500">
+            Ripped open on {formatDate(item.opened_at)} — fix the date if that
+            isn&rsquo;t right.
+          </p>
+          <OpenedForm itemId={item.id} defaultDate={item.opened_at} />
         </div>
       )}
 

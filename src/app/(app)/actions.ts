@@ -733,6 +733,50 @@ export async function bulkMarkUnopened(
   return { returned: count ?? 0 };
 }
 
+/** Correct the date on already-ripped product, from its edit screen. */
+export async function updateOpenedDate(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const { supabase, user } = await requireUser();
+
+  const id = String(formData.get("id") ?? "");
+  if (!id) return { error: "Missing item id." };
+
+  const parsed = z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Opened date is required")
+    .safeParse(formData.get("opened_at"));
+  if (!parsed.success) {
+    return {
+      error: parsed.error.issues[0]?.message ?? "Invalid date.",
+      values: formValues(formData),
+    };
+  }
+
+  const { error, count } = await supabase
+    .from("items")
+    .update({ opened_at: parsed.data }, { count: "exact" })
+    .eq("id", id)
+    .is("sale_date", null) // a sold item isn't ripped product
+    .eq("user_id", user.id);
+  if (error) {
+    return { error: dbError(error.message), values: formValues(formData) };
+  }
+  if (!count) {
+    return {
+      error: "Couldn't update — this item has since been sold.",
+      values: formValues(formData),
+    };
+  }
+
+  revalidatePath("/inventory");
+  revalidatePath("/ripped");
+  revalidatePath("/dashboard");
+  redirect("/ripped");
+}
+
 export async function markUnsold(formData: FormData) {
   const { supabase, user } = await requireUser();
 

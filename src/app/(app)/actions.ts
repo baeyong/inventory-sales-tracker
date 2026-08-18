@@ -6,6 +6,9 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { matchImportRows, type MatchCandidate } from "@/lib/importMapping";
 import { splitPayout } from "@/lib/money";
+import { autoQuery } from "@/lib/market";
+import { fetchEbayComps } from "@/lib/ebay";
+import type { Item } from "@/lib/types";
 
 export type FormState = {
   error?: string;
@@ -905,7 +908,9 @@ const ITEM_COLUMNS = [
   "purchase_platform", "listed", "quantity", "card_set", "card_number",
   "player", "condition", "grade_company", "grade", "sale_date", "sale_platform",
   "sale_payout", "buyer", "payment_received", "shipped", "bundle_id",
-  "opened_at", "market_platform", "market_search", "created_at", "updated_at",
+  "opened_at", "market_platform", "market_search", "ebay_comp_low",
+  "ebay_comp_median", "ebay_comp_high", "ebay_comp_count",
+  "ebay_comp_checked_at", "created_at", "updated_at",
 ] as const;
 const EXPENSE_COLUMNS = [
   "id", "name", "amount", "spent_on", "source", "notes", "created_at",
@@ -979,4 +984,75 @@ export async function restoreBackup(
   revalidatePath("/expenses");
   revalidatePath("/dashboard");
   return { items: items.length, expenses: expenses.length };
+}
+
+const EBAY_REFRESH_MS = 60 * 60 * 1000; // once per hour per item
+
+export type EbayCompsResult = {
+  error?: string;
+  retryMinutes?: number;
+  low?: number;
+  median?: number;
+  high?: number;
+  count?: number;
+  checkedAt?: string;
+};
+
+/** Pull eBay price comps for one item via the Browse API. Rate-limited to once
+ * an hour per item, enforced here (server-side) using ebay_comp_checked_at so
+ * the button can't be bypassed. */
+export async function refreshEbayComps(
+  itemId: unknown
+): Promise<EbayCompsResult> {
+  const { supabase, user } = await requireUser();
+
+  const idParsed = z.string().min(1).safeParse(itemId);
+  if (!idParsed.success) return { error: "Missing item." };
+
+  const { data } = await supabase
+    .from("items")
+    .select(
+      "id, name, category, card_number, condition, grade_company, grade, ebay_comp_checked_at"
+    )
+    .eq("id", idParsed.data)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!data) return { error: "Item not found." };
+
+  const checkedAt = data.ebay_comp_checked_at as string | null;
+  if (checkedAt) {
+    const readyAt = new Date(checkedAt).getTime() + EBAY_REFRESH_MS;
+    const mins = Math.ceil((readyAt - Date.now()) / 60_000);
+    if (mins > 0) {
+      return {
+        error: `Checked recently — try again in ${mins} min.`,
+        retryMinutes: mins,
+      };
+    }
+  }
+
+  const query = autoQuery(data as unknown as Item);
+  let comps;
+  try {
+    comps = await fetchEbayComps(query);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "eBay lookup failed." };
+  }
+
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from("items")
+    .update({
+      ebay_comp_low: comps.count ? comps.low : null,
+      ebay_comp_median: comps.count ? comps.median : null,
+      ebay_comp_high: comps.count ? comps.high : null,
+      ebay_comp_count: comps.count,
+      ebay_comp_checked_at: now,
+    })
+    .eq("id", idParsed.data)
+    .eq("user_id", user.id);
+  if (error) return { error: dbError(error.message) };
+
+  revalidatePath("/inventory");
+  return { ...comps, checkedAt: now };
 }

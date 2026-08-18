@@ -8,6 +8,7 @@ import {
   bulkMarkOpened,
   bulkMarkSold,
   bulkSetCategory,
+  refreshEbayComps,
   updateFulfillment,
 } from "@/app/(app)/actions";
 import {
@@ -36,6 +37,22 @@ function cardDetails(item: Item): string | null {
   return parts.join(" · ") || null;
 }
 
+// Minutes until an item's eBay comps may be refreshed again (0 = ready now).
+function ebayReadyInMinutes(checkedAt: string | null): number {
+  if (!checkedAt) return 0;
+  const readyAt = new Date(checkedAt).getTime() + 60 * 60 * 1000;
+  return Math.max(0, Math.ceil((readyAt - Date.now()) / 60000));
+}
+
+function relativeTime(iso: string): string {
+  const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.round(hrs / 24)}d ago`;
+}
+
 export default function InventoryTable({ items }: { items: Item[] }) {
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -54,8 +71,24 @@ export default function InventoryTable({ items }: { items: Item[] }) {
   const [ripDate, setRipDate] = useState(() =>
     new Date().toISOString().slice(0, 10)
   );
+  const [compBusy, setCompBusy] = useState<string | null>(null);
+  const [compErr, setCompErr] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  function refreshComps(item: Item) {
+    setCompErr((m) => ({ ...m, [item.id]: "" }));
+    setCompBusy(item.id);
+    startTransition(async () => {
+      const res = await refreshEbayComps(item.id);
+      if (res.error) {
+        setCompErr((m) => ({ ...m, [item.id]: res.error! }));
+      } else {
+        router.refresh();
+      }
+      setCompBusy(null);
+    });
+  }
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
@@ -329,6 +362,29 @@ export default function InventoryTable({ items }: { items: Item[] }) {
                       {cardDetails(item)}
                     </span>
                   )}
+                  {item.ebay_comp_checked_at && (
+                    <span className="block text-xs text-zinc-500">
+                      <span className="font-medium text-zinc-600 dark:text-zinc-400">
+                        eBay:
+                      </span>{" "}
+                      {item.ebay_comp_count && item.ebay_comp_median !== null ? (
+                        <>
+                          {formatMoney(Number(item.ebay_comp_median))} median ·{" "}
+                          {formatMoney(Number(item.ebay_comp_low))}–
+                          {formatMoney(Number(item.ebay_comp_high))} ·{" "}
+                          {item.ebay_comp_count} active
+                        </>
+                      ) : (
+                        "no active listings found"
+                      )}{" "}
+                      · {relativeTime(item.ebay_comp_checked_at)}
+                    </span>
+                  )}
+                  {compErr[item.id] && (
+                    <span className="block text-xs text-red-600 dark:text-red-400">
+                      {compErr[item.id]}
+                    </span>
+                  )}
                 </td>
                 <td className="px-4 py-3">
                   <span
@@ -368,6 +424,27 @@ export default function InventoryTable({ items }: { items: Item[] }) {
                     >
                       Value ↗
                     </a>
+                    {(() => {
+                      const waitMin = ebayReadyInMinutes(
+                        item.ebay_comp_checked_at
+                      );
+                      const busy = compBusy === item.id;
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => refreshComps(item)}
+                          disabled={busy || waitMin > 0}
+                          title={
+                            waitMin > 0
+                              ? `Next refresh in ${waitMin}m`
+                              : "Pull eBay price comps"
+                          }
+                          className="rounded-md border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                        >
+                          {busy ? "…" : "eBay comps"}
+                        </button>
+                      );
+                    })()}
                     <Link
                       href={`/inventory/${item.id}/sell`}
                       className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700"

@@ -47,6 +47,11 @@ export interface Item {
   opened_at: string | null; // YYYY-MM-DD it was ripped open, null = not opened
   market_platform: string | null; // marketplace key for value lookup (null = category default)
   market_search: string | null; // search-words or full-URL override (null = auto)
+  ebay_comp_low: number | null; // cached eBay comps (active listings for now)
+  ebay_comp_median: number | null;
+  ebay_comp_high: number | null;
+  ebay_comp_count: number | null;
+  ebay_comp_checked_at: string | null; // ISO timestamp of last pull (hourly gate)
   created_at: string;
   updated_at: string;
 }

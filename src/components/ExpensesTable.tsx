@@ -10,6 +10,7 @@ import {
   type SortDir,
 } from "@/lib/sort";
 import SortHeader from "@/components/SortHeader";
+import MobileSort from "@/components/MobileSort";
 
 export default function ExpensesTable({ expenses }: { expenses: Expense[] }) {
   const [search, setSearch] = useState("");
@@ -58,6 +59,18 @@ export default function ExpensesTable({ expenses }: { expenses: Expense[] }) {
           </span>
         )}
       </div>
+
+      <MobileSort
+        options={[
+          { key: "name", label: "Name" },
+          { key: "amount", label: "Amount" },
+          { key: "spent_on", label: "Date" },
+          { key: "source", label: "Source" },
+        ]}
+        activeKey={sortKey}
+        dir={sortDir}
+        onSort={toggleSort}
+      />
 
       {/* Mobile: stacked cards */}
       <ul className="space-y-3 md:hidden">

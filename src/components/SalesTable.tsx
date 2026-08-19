@@ -22,6 +22,7 @@ import { matchesSearch } from "@/lib/search";
 import { sortItems, type SortDir, type SortKey } from "@/lib/sort";
 import { buildBundleMeta, groupBundles } from "@/lib/bundles";
 import SortHeader from "@/components/SortHeader";
+import MobileSort from "@/components/MobileSort";
 
 export default function SalesTable({
   items,
@@ -370,6 +371,19 @@ export default function SalesTable({
           )}
         </div>
       )}
+
+      <MobileSort
+        options={[
+          { key: "name", label: "Item" },
+          { key: "sale_date", label: "Sold" },
+          { key: "purchase_price", label: "Cost" },
+          { key: "sale_payout", label: "Payout" },
+          { key: "profit", label: "Profit" },
+        ]}
+        activeKey={sortKey}
+        dir={sortDir}
+        onSort={toggleSort}
+      />
 
       {/* Mobile: stacked cards (one per bundle or item) */}
       <ul className="space-y-3 md:hidden">

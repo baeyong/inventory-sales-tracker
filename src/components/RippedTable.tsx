@@ -8,6 +8,7 @@ import { formatDate, formatMoney, isCardCategory, type Item } from "@/lib/types"
 import { matchesSearch } from "@/lib/search";
 import { sortItems, type SortDir, type SortKey } from "@/lib/sort";
 import SortHeader from "@/components/SortHeader";
+import MobileSort from "@/components/MobileSort";
 
 export default function RippedTable({ items }: { items: Item[] }) {
   const router = useRouter();
@@ -67,6 +68,20 @@ export default function RippedTable({ items }: { items: Item[] }) {
           <span className="text-sm text-red-600 dark:text-red-400">{error}</span>
         )}
       </div>
+
+      <MobileSort
+        options={[
+          { key: "name", label: "Product" },
+          { key: "category", label: "Type" },
+          { key: "purchase_platform", label: "Bought at" },
+          { key: "purchase_date", label: "Purchased" },
+          { key: "purchase_price", label: "Cost" },
+          { key: "opened_at", label: "Opened" },
+        ]}
+        activeKey={sortKey}
+        dir={sortDir}
+        onSort={toggleSort}
+      />
 
       {/* Mobile: stacked cards */}
       <ul className="space-y-3 md:hidden">

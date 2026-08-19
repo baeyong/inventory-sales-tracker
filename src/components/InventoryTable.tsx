@@ -22,6 +22,7 @@ import { matchesSearch } from "@/lib/search";
 import { sortItems, type SortDir, type SortKey } from "@/lib/sort";
 import { marketLink } from "@/lib/market";
 import SortHeader from "@/components/SortHeader";
+import MobileSort from "@/components/MobileSort";
 
 function cardDetails(item: Item): string | null {
   if (!isCardCategory(item.category)) return null;
@@ -286,6 +287,18 @@ export default function InventoryTable({ items }: { items: Item[] }) {
           )}
         </div>
       )}
+
+      <MobileSort
+        options={[
+          { key: "name", label: "Name" },
+          { key: "category", label: "Type" },
+          { key: "purchase_price", label: "Cost" },
+          { key: "purchase_date", label: "Purchased" },
+        ]}
+        activeKey={sortKey}
+        dir={sortDir}
+        onSort={toggleSort}
+      />
 
       {/* Mobile: stacked cards */}
       <ul className="space-y-3 md:hidden">

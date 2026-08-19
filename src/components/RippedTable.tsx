@@ -48,7 +48,7 @@ export default function RippedTable({ items }: { items: Item[] }) {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search opened product…"
-          className="w-64 rounded-md border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+          className="w-full rounded-md border border-zinc-300 px-3 py-1.5 text-sm sm:w-64 dark:border-zinc-700 dark:bg-zinc-950"
         />
         {search && (
           <span className="text-sm text-zinc-500">
@@ -68,7 +68,60 @@ export default function RippedTable({ items }: { items: Item[] }) {
         )}
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
+      {/* Mobile: stacked cards */}
+      <ul className="space-y-3 md:hidden">
+        {visible.map((item) => (
+          <li
+            key={item.id}
+            className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <Link
+                href={`/inventory/${item.id}`}
+                className="font-medium hover:underline"
+              >
+                {item.name}
+              </Link>
+              <span
+                className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${
+                  isCardCategory(item.category)
+                    ? "bg-violet-50 text-violet-700 dark:bg-violet-950 dark:text-violet-300"
+                    : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+                }`}
+              >
+                {item.category}
+              </span>
+            </div>
+            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-sm text-zinc-600 dark:text-zinc-300">
+              <span className="font-medium">
+                {formatMoney(Number(item.purchase_price))}
+              </span>
+              {item.purchase_platform && (
+                <span className="text-zinc-500">{item.purchase_platform}</span>
+              )}
+              <span className="text-zinc-500">
+                Purchased {formatDate(item.purchase_date)}
+              </span>
+              <span className="text-zinc-500">
+                Opened {formatDate(item.opened_at)}
+              </span>
+            </div>
+            <div className="mt-3">
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => undo(item.id)}
+                className="text-xs text-zinc-500 hover:text-blue-600 hover:underline disabled:opacity-50"
+              >
+                Back to inventory
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      {/* Desktop: table */}
+      <div className="hidden overflow-x-auto rounded-xl border border-zinc-200 md:block dark:border-zinc-800">
         <table className="w-full min-w-[820px] text-sm">
           <thead className="bg-zinc-50 text-left text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
             <tr>

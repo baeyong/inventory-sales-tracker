@@ -268,7 +268,7 @@ export default function SalesTable({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search sales…"
-          className="w-64 rounded-md border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+          className="w-full rounded-md border border-zinc-300 px-3 py-1.5 text-sm sm:w-64 dark:border-zinc-700 dark:bg-zinc-950"
         />
         {search && (
           <span className="text-sm text-zinc-500">
@@ -371,7 +371,166 @@ export default function SalesTable({
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
+      {/* Mobile: stacked cards (one per bundle or item) */}
+      <ul className="space-y-3 md:hidden">
+        {visible.map((item) => {
+          const meta = item.bundle_id
+            ? bundleMeta.get(item.bundle_id)
+            : undefined;
+          const members = meta ? bundleVisible.get(item.bundle_id!)! : [item];
+          if (meta && members[0].id !== item.id) return null;
+          const allSel = members.every((m) => selected.has(m.id));
+          const allPaid = members.every((m) => m.payment_received);
+          const allShipped = members.every((m) => m.shipped);
+          const bt = item.bundle_id ? bundleTotals.get(item.bundle_id) : undefined;
+          return (
+            <li
+              key={item.id}
+              className={`rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950 ${
+                meta ? `border-l-4 ${meta.color.stripe}` : ""
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  aria-label={
+                    meta ? `Select bundle ${meta.num}` : `Select ${item.name}`
+                  }
+                  checked={allSel}
+                  onChange={() => toggleSelection(members)}
+                  className="mt-1 h-5 w-5 shrink-0 accent-blue-600"
+                />
+                <div className="min-w-0 flex-1">
+                  {meta && (
+                    <span
+                      className={`mb-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${meta.color.badge}`}
+                    >
+                      <span className={`h-2 w-2 rounded-full ${meta.color.dot}`} />
+                      Bundle {meta.num} · {members.length} items
+                    </span>
+                  )}
+                  <div className="space-y-2">
+                    {members.map((m) => {
+                      const profit =
+                        m.sale_payout === null
+                          ? null
+                          : Number(m.sale_payout) - Number(m.purchase_price);
+                      return (
+                        <div
+                          key={m.id}
+                          className={
+                            meta
+                              ? "border-t border-zinc-100 pt-2 first:border-t-0 first:pt-0 dark:border-zinc-800"
+                              : ""
+                          }
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <Link
+                              href={`/inventory/${m.id}`}
+                              className="font-medium hover:underline"
+                            >
+                              {m.name}
+                            </Link>
+                            <span
+                              className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${
+                                isCardCategory(m.category)
+                                  ? "bg-violet-50 text-violet-700 dark:bg-violet-950 dark:text-violet-300"
+                                  : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+                              }`}
+                            >
+                              {m.category}
+                            </span>
+                          </div>
+                          {m.buyer && (
+                            <span className="block text-xs text-zinc-500">
+                              Buyer: {m.buyer}
+                            </span>
+                          )}
+                          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-sm">
+                            <span className="text-zinc-500">
+                              {formatDate(m.sale_date)}
+                            </span>
+                            {m.purchase_platform && (
+                              <span className="text-zinc-500">
+                                {m.purchase_platform}
+                              </span>
+                            )}
+                            <span>Cost {formatMoney(Number(m.purchase_price))}</span>
+                            <span>
+                              Payout{" "}
+                              {m.sale_payout === null
+                                ? "—"
+                                : formatMoney(Number(m.sale_payout))}
+                            </span>
+                            <span
+                              className={
+                                profit === null
+                                  ? "text-zinc-400"
+                                  : profit >= 0
+                                    ? "font-medium text-emerald-600 dark:text-emerald-400"
+                                    : "font-medium text-red-600 dark:text-red-400"
+                              }
+                            >
+                              {profit === null
+                                ? "—"
+                                : `${formatMoney(profit)} profit`}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {meta && bt && bt.known > 0 && (
+                    <div className="mt-2 text-sm font-semibold">
+                      Bundle total {formatMoney(bt.total)}
+                      {bt.known < bt.count && (
+                        <span className="ml-1 text-xs font-normal text-zinc-500">
+                          so far
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  <div className="mt-3 flex flex-wrap items-center gap-4">
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={allPaid}
+                        disabled={pending}
+                        onChange={() =>
+                          setFlag(members, "payment_received", !allPaid)
+                        }
+                        className="h-4 w-4 accent-emerald-600"
+                      />
+                      <span className="text-zinc-500">Paid</span>
+                    </label>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={allShipped}
+                        disabled={pending}
+                        onChange={() => setFlag(members, "shipped", !allShipped)}
+                        className="h-4 w-4 accent-emerald-600"
+                      />
+                      <span className="text-zinc-500">Shipped</span>
+                    </label>
+                    <button
+                      type="button"
+                      disabled={pending}
+                      onClick={() => run(bulkMarkUnsold, members.map((m) => m.id))}
+                      className="ml-auto text-xs text-zinc-500 hover:text-blue-600 hover:underline disabled:opacity-50"
+                    >
+                      Undo sale
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+
+      {/* Desktop: table */}
+      <div className="hidden overflow-x-auto rounded-xl border border-zinc-200 md:block dark:border-zinc-800">
         <table className="w-full min-w-[880px] text-sm">
           <thead className="bg-zinc-50 text-left text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
             <tr>

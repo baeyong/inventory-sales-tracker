@@ -199,7 +199,7 @@ export default function InventoryTable({ items }: { items: Item[] }) {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search items…"
-          className="w-64 rounded-md border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+          className="w-full rounded-md border border-zinc-300 px-3 py-1.5 text-sm sm:w-64 dark:border-zinc-700 dark:bg-zinc-950"
         />
         {search && (
           <span className="text-sm text-zinc-500">
@@ -287,7 +287,95 @@ export default function InventoryTable({ items }: { items: Item[] }) {
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
+      {/* Mobile: stacked cards */}
+      <ul className="space-y-3 md:hidden">
+        {visible.map((item) => (
+          <li
+            key={item.id}
+            className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950"
+          >
+            <div className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                aria-label={`Select ${item.name}`}
+                checked={selected.has(item.id)}
+                onChange={() => toggle(item.id)}
+                className="mt-1 h-5 w-5 shrink-0 accent-blue-600"
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-2">
+                  <Link
+                    href={`/inventory/${item.id}`}
+                    className="font-medium hover:underline"
+                  >
+                    {item.name}
+                  </Link>
+                  <span
+                    className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${
+                      isCardCategory(item.category)
+                        ? "bg-violet-50 text-violet-700 dark:bg-violet-950 dark:text-violet-300"
+                        : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+                    }`}
+                  >
+                    {item.category}
+                  </span>
+                </div>
+                {cardDetails(item) && (
+                  <span className="mt-0.5 block text-xs text-zinc-500">
+                    {cardDetails(item)}
+                  </span>
+                )}
+                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-zinc-600 dark:text-zinc-300">
+                  <span className="font-medium">
+                    {formatMoney(Number(item.purchase_price))}
+                  </span>
+                  {item.quantity > 1 && <span>Qty {item.quantity}</span>}
+                  {item.purchase_platform && <span>{item.purchase_platform}</span>}
+                  {item.purchase_date && (
+                    <span>{formatDate(item.purchase_date)}</span>
+                  )}
+                </div>
+                <label className="mt-2 flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    aria-label={`Listed: ${item.name}`}
+                    checked={item.listed}
+                    disabled={pending}
+                    onChange={() => toggleListed(item)}
+                    className="h-4 w-4 accent-emerald-600"
+                  />
+                  <span className="text-zinc-500">Listed for sale</span>
+                </label>
+              </div>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <a
+                href={marketLink(item).url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-md border border-zinc-300 px-3 py-2 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              >
+                Value ↗
+              </a>
+              <Link
+                href={`/inventory/${item.id}/sell`}
+                className="rounded-md bg-emerald-600 px-3 py-2 text-xs font-medium text-white hover:bg-emerald-700"
+              >
+                Sell
+              </Link>
+              <Link
+                href={`/inventory/${item.id}`}
+                className="rounded-md border border-zinc-300 px-3 py-2 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              >
+                Edit
+              </Link>
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      {/* Desktop: table */}
+      <div className="hidden overflow-x-auto rounded-xl border border-zinc-200 md:block dark:border-zinc-800">
         <table className="w-full min-w-[760px] text-sm">
           <thead className="bg-zinc-50 text-left text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
             <tr>

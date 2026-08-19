@@ -42,7 +42,7 @@ export default function ExpensesTable({ expenses }: { expenses: Expense[] }) {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search expenses…"
-          className="w-64 rounded-md border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+          className="w-full rounded-md border border-zinc-300 px-3 py-1.5 text-sm sm:w-64 dark:border-zinc-700 dark:bg-zinc-950"
         />
         {search && (
           <span className="text-sm text-zinc-500">
@@ -59,7 +59,59 @@ export default function ExpensesTable({ expenses }: { expenses: Expense[] }) {
         )}
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
+      {/* Mobile: stacked cards */}
+      <ul className="space-y-3 md:hidden">
+        {visible.map((e) => (
+          <li
+            key={e.id}
+            className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <Link
+                href={`/expenses/${e.id}`}
+                className="font-medium hover:underline"
+              >
+                {e.name}
+              </Link>
+              <span className="shrink-0 font-medium">
+                {formatMoney(Number(e.amount))}
+              </span>
+            </div>
+            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-sm text-zinc-500">
+              <span>{formatDate(e.spent_on)}</span>
+              {e.source && <span>{e.source}</span>}
+            </div>
+            {e.notes && (
+              <p className="mt-1 text-sm text-zinc-500">{e.notes}</p>
+            )}
+            <div className="mt-3 flex gap-4">
+              <Link
+                href={`/expenses/${e.id}`}
+                className="text-xs text-zinc-500 hover:text-blue-600 hover:underline"
+              >
+                Edit
+              </Link>
+              <form
+                action={deleteExpense}
+                onSubmit={(ev) => {
+                  if (!confirm(`Delete "${e.name}"?`)) ev.preventDefault();
+                }}
+              >
+                <input type="hidden" name="id" value={e.id} />
+                <button
+                  type="submit"
+                  className="text-xs text-zinc-500 hover:text-red-600 hover:underline"
+                >
+                  Delete
+                </button>
+              </form>
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      {/* Desktop: table */}
+      <div className="hidden overflow-x-auto rounded-xl border border-zinc-200 md:block dark:border-zinc-800">
         <table className="w-full min-w-[720px] text-sm">
           <thead className="bg-zinc-50 text-left text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
             <tr>

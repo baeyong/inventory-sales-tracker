@@ -55,6 +55,20 @@ const moneyField = z.coerce
   .number({ error: "Enter a valid amount" })
   .min(0, "Amount can't be negative");
 
+// Like moneyField but blank-able. The empty branch has to come first: z.coerce
+// would happily turn "" into 0, which would read as "worth nothing".
+const optionalMoneyField = z
+  .string()
+  .nullable()
+  .transform((s) => (s ?? "").trim())
+  .transform((s) => (s === "" ? null : Number(s)))
+  .pipe(
+    z
+      .number({ error: "Enter a valid value" })
+      .min(0, "Value can't be negative")
+      .nullable()
+  );
+
 const itemSchema = z
   .object({
     category: z
@@ -66,6 +80,7 @@ const itemSchema = z
     purchase_price: moneyField,
     purchase_date: dateField,
     purchase_platform: optionalText,
+    est_value: optionalMoneyField,
     listed: z.boolean(),
     quantity: z.coerce.number().int().min(1, "Quantity must be at least 1"),
     card_set: optionalText,
@@ -113,6 +128,7 @@ function itemPayload(formData: FormData) {
     purchase_price: formData.get("purchase_price"),
     purchase_date: formData.get("purchase_date"),
     purchase_platform: formData.get("purchase_platform"),
+    est_value: formData.get("est_value"),
     listed: formData.get("listed") === "on",
     quantity: formData.get("quantity"),
     card_set: formData.get("card_set"),
@@ -902,7 +918,8 @@ export async function listExpenses(): Promise<Record<string, unknown>[]> {
 // newer columns just falls back to their defaults).
 const ITEM_COLUMNS = [
   "id", "category", "name", "description", "purchase_price", "purchase_date",
-  "purchase_platform", "listed", "quantity", "card_set", "card_number",
+  "purchase_platform", "est_value", "listed", "quantity", "card_set",
+  "card_number",
   "player", "condition", "grade_company", "grade", "sale_date", "sale_platform",
   "sale_payout", "buyer", "payment_received", "shipped", "bundle_id",
   "opened_at", "market_platform", "market_search", "created_at", "updated_at",

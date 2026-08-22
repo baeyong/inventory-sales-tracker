@@ -29,6 +29,7 @@ export interface Item {
   purchase_price: number;
   purchase_date: string | null; // YYYY-MM-DD
   purchase_platform: string | null; // where it was bought
+  est_value: number | null; // hand-entered current worth, null = not valued
   listed: boolean; // listed for sale yet?
   quantity: number;
   card_set: string | null;

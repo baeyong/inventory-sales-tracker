@@ -293,6 +293,7 @@ export default function InventoryTable({ items }: { items: Item[] }) {
           { key: "name", label: "Name" },
           { key: "category", label: "Type" },
           { key: "purchase_price", label: "Cost" },
+          { key: "est_value", label: "Est. value" },
           { key: "purchase_date", label: "Purchased" },
         ]}
         activeKey={sortKey}
@@ -342,6 +343,11 @@ export default function InventoryTable({ items }: { items: Item[] }) {
                   <span className="font-medium">
                     {formatMoney(Number(item.purchase_price))}
                   </span>
+                  {item.est_value !== null && (
+                    <span title="Your estimated value">
+                      ≈ {formatMoney(Number(item.est_value))}
+                    </span>
+                  )}
                   {item.quantity > 1 && <span>Qty {item.quantity}</span>}
                   {item.purchase_platform && <span>{item.purchase_platform}</span>}
                   {item.purchase_date && (
@@ -389,7 +395,7 @@ export default function InventoryTable({ items }: { items: Item[] }) {
 
       {/* Desktop: table */}
       <div className="hidden overflow-x-auto rounded-xl border border-zinc-200 md:block dark:border-zinc-800">
-        <table className="w-full min-w-[760px] text-sm">
+        <table className="w-full min-w-[860px] text-sm">
           <thead className="bg-zinc-50 text-left text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
             <tr>
               <th className="w-10 px-4 py-3">
@@ -406,6 +412,7 @@ export default function InventoryTable({ items }: { items: Item[] }) {
               <th className="px-4 py-3">Bought at</th>
               <th className="px-4 py-3 text-right">Qty</th>
               <SortHeader label="Cost" sortKey="purchase_price" activeKey={sortKey} dir={sortDir} onSort={toggleSort} align="right" />
+              <SortHeader label="Est. value" sortKey="est_value" activeKey={sortKey} dir={sortDir} onSort={toggleSort} align="right" />
               <SortHeader label="Purchased" sortKey="purchase_date" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
               <th className="px-4 py-3 text-center">Listed</th>
               <th className="px-4 py-3" />
@@ -446,6 +453,13 @@ export default function InventoryTable({ items }: { items: Item[] }) {
                 <td className="px-4 py-3 text-right">{item.quantity}</td>
                 <td className="px-4 py-3 text-right">
                   {formatMoney(Number(item.purchase_price))}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  {item.est_value === null ? (
+                    <span className="text-zinc-400">—</span>
+                  ) : (
+                    formatMoney(Number(item.est_value))
+                  )}
                 </td>
                 <td className="px-4 py-3">{formatDate(item.purchase_date)}</td>
                 <td className="px-4 py-3 text-center">

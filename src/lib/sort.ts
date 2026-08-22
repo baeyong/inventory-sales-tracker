@@ -6,6 +6,7 @@ export type SortKey =
   | "purchase_platform"
   | "purchase_price"
   | "purchase_date"
+  | "est_value"
   | "opened_at"
   | "sale_date"
   | "sale_payout"
@@ -51,6 +52,8 @@ function itemValue(item: Item, key: SortKey): string | number | null {
       return Number(item.purchase_price);
     case "purchase_date":
       return item.purchase_date;
+    case "est_value":
+      return item.est_value === null ? null : Number(item.est_value);
     case "opened_at":
       return item.opened_at;
     case "sale_date":

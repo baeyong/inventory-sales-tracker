@@ -189,6 +189,21 @@ export default function ItemForm({
           />
         </label>
         <label className="block text-sm">
+          <span className="font-medium">Est. value</span>
+          <input
+            name="est_value"
+            type="number"
+            step="0.01"
+            min="0"
+            defaultValue={v?.est_value ?? item?.est_value ?? ""}
+            placeholder="What it's worth now"
+            className={inputCls}
+          />
+          <span className="mt-1 block text-xs text-zinc-500">
+            Your own estimate from comps. Leave blank if you haven&rsquo;t valued it.
+          </span>
+        </label>
+        <label className="block text-sm">
           <span className="font-medium">Purchase date</span>
           <input
             name="purchase_date"

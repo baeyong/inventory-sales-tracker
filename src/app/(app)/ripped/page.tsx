@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { formatMoney, type Item } from "@/lib/types";
 import RippedTable from "@/components/RippedTable";
+import PageStats from "@/components/PageStats";
 
 export const metadata = { title: "For the Love of the Game · Resale Tracker" };
 
@@ -26,15 +27,15 @@ export default async function RippedPage() {
           Inventory
         </Link>{" "}
         as separate $0-cost items.
-        {items.length > 0 && (
-          <>
-            {" "}
-            <span className="font-medium">
-              {items.length} opened · {formatMoney(totalCost)} in
-            </span>
-          </>
-        )}
       </p>
+      {items.length > 0 && (
+        <PageStats
+          stats={[
+            { label: "Opened", value: String(items.length) },
+            { label: "Cost in", value: formatMoney(totalCost) },
+          ]}
+        />
+      )}
 
       {items.length === 0 ? (
         <div className="mt-10 rounded-xl border border-dashed border-zinc-300 p-10 text-center text-sm text-zinc-500 dark:border-zinc-700">

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { formatMoney, type Expense } from "@/lib/types";
 import ExpensesTable from "@/components/ExpensesTable";
+import PageStats from "@/components/PageStats";
 
 export const metadata = { title: "Expenses · Resale Tracker" };
 
@@ -23,17 +24,18 @@ export default async function ExpensesPage() {
           <p className="mt-1 text-sm text-zinc-500">
             Business costs that aren&rsquo;t inventory — supplies, shipping,
             fees. They feed the Tax Summary.
-            {expenses.length > 0 && (
-              <>
-                {" "}
-                <span className="font-medium">
-                  {expenses.length}{" "}
-                  {expenses.length === 1 ? "expense" : "expenses"} ·{" "}
-                  {formatMoney(total)} total
-                </span>
-              </>
-            )}
           </p>
+          {expenses.length > 0 && (
+            <PageStats
+              stats={[
+                {
+                  label: expenses.length === 1 ? "Expense" : "Expenses",
+                  value: String(expenses.length),
+                },
+                { label: "Total", value: formatMoney(total) },
+              ]}
+            />
+          )}
         </div>
         <Link
           href="/expenses/new"

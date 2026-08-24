@@ -4,6 +4,7 @@ import { getBundleNumbers } from "@/app/(app)/actions";
 import { formatMoney, type Item } from "@/lib/types";
 import SalesTable from "@/components/SalesTable";
 import FilterBar from "@/components/FilterBar";
+import PageStats from "@/components/PageStats";
 
 export const metadata = { title: "Sales · Resale Tracker" };
 
@@ -52,22 +53,25 @@ export default async function SalesPage({
   return (
     <div>
       <h1 className="text-xl font-semibold">Sales</h1>
-      <p className="mt-1 text-sm text-zinc-500">
-        {items.length} {items.length === 1 ? "sale" : "sales"} ·{" "}
-        {formatMoney(totalPayout)} received ·{" "}
-        <span
-          className={
-            totalProfit >= 0
-              ? "text-emerald-600 dark:text-emerald-400"
-              : "text-red-600 dark:text-red-400"
-          }
-        >
-          {formatMoney(totalProfit)} profit
-        </span>
-        {unknownCount > 0 && (
-          <> · {unknownCount} missing a payout (open the item to add it)</>
-        )}
-      </p>
+      <PageStats
+        stats={[
+          {
+            label: items.length === 1 ? "Sale" : "Sales",
+            value: String(items.length),
+          },
+          { label: "Received", value: formatMoney(totalPayout) },
+          {
+            label: "Profit",
+            value: formatMoney(totalProfit),
+            tone: totalProfit >= 0 ? "pos" : "neg",
+          },
+        ]}
+      />
+      {unknownCount > 0 && (
+        <p className="mt-2 text-sm text-zinc-500">
+          {unknownCount} missing a payout (open the item to add it)
+        </p>
+      )}
       <div className="mt-3">
         <FilterBar categories={categories} showDates />
       </div>

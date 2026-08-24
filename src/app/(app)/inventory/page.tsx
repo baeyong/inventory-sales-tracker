@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { formatMoney, type Item } from "@/lib/types";
 import InventoryTable from "@/components/InventoryTable";
 import FilterBar from "@/components/FilterBar";
+import PageStats from "@/components/PageStats";
 
 export const metadata = { title: "Inventory · Resale Tracker" };
 
@@ -40,18 +41,39 @@ export default async function InventoryPage({
   ].sort();
 
   const totalCost = items.reduce((sum, i) => sum + Number(i.purchase_price), 0);
+  const valued = items.filter((i) => i.est_value !== null);
+  const totalValue = valued.reduce((sum, i) => sum + Number(i.est_value), 0);
+  const potential = totalValue - valued.reduce(
+    (sum, i) => sum + Number(i.purchase_price),
+    0
+  );
 
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold">Inventory</h1>
-          <p className="mt-1 text-sm text-zinc-500">
-            {items.length} unsold {items.length === 1 ? "item" : "items"} ·{" "}
-            {formatMoney(totalCost)} invested
-          </p>
+          <PageStats
+            stats={[
+              {
+                label: items.length === 1 ? "Unsold item" : "Unsold items",
+                value: String(items.length),
+              },
+              { label: "Invested", value: formatMoney(totalCost) },
+              ...(valued.length > 0
+                ? ([
+                    { label: "Est. value", value: formatMoney(totalValue) },
+                    {
+                      label: "Potential",
+                      value: formatMoney(potential),
+                      tone: potential >= 0 ? "pos" : "neg",
+                    },
+                  ] as const)
+                : []),
+            ]}
+          />
           {items.some((i) => !i.listed) && (
-            <p className="mt-1 text-sm font-medium">
+            <p className="mt-2 text-sm font-medium">
               <Link
                 href="/inventory?listed=no"
                 className="text-amber-700 hover:underline dark:text-amber-400"

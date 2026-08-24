@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { formatMoney, type Item } from "@/lib/types";
 import InventoryTable from "@/components/InventoryTable";
 import FilterBar from "@/components/FilterBar";
+import PageStats from "@/components/PageStats";
 
 export const metadata = { title: "Inventory · Resale Tracker" };
 
@@ -46,12 +47,17 @@ export default async function InventoryPage({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold">Inventory</h1>
-          <p className="mt-1 text-sm text-zinc-500">
-            {items.length} unsold {items.length === 1 ? "item" : "items"} ·{" "}
-            {formatMoney(totalCost)} invested
-          </p>
+          <PageStats
+            stats={[
+              {
+                label: items.length === 1 ? "Unsold item" : "Unsold items",
+                value: String(items.length),
+              },
+              { label: "Invested", value: formatMoney(totalCost) },
+            ]}
+          />
           {items.some((i) => !i.listed) && (
-            <p className="mt-1 text-sm font-medium">
+            <p className="mt-2 text-sm font-medium">
               <Link
                 href="/inventory?listed=no"
                 className="text-amber-700 hover:underline dark:text-amber-400"

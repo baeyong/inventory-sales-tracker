@@ -41,6 +41,12 @@ export default async function InventoryPage({
   ].sort();
 
   const totalCost = items.reduce((sum, i) => sum + Number(i.purchase_price), 0);
+  const valued = items.filter((i) => i.est_value !== null);
+  const totalValue = valued.reduce((sum, i) => sum + Number(i.est_value), 0);
+  const potential = totalValue - valued.reduce(
+    (sum, i) => sum + Number(i.purchase_price),
+    0
+  );
 
   return (
     <div>
@@ -54,6 +60,16 @@ export default async function InventoryPage({
                 value: String(items.length),
               },
               { label: "Invested", value: formatMoney(totalCost) },
+              ...(valued.length > 0
+                ? ([
+                    { label: "Est. value", value: formatMoney(totalValue) },
+                    {
+                      label: "Potential",
+                      value: formatMoney(potential),
+                      tone: potential >= 0 ? "pos" : "neg",
+                    },
+                  ] as const)
+                : []),
             ]}
           />
           {items.some((i) => !i.listed) && (

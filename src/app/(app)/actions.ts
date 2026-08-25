@@ -457,6 +457,41 @@ export async function bulkSetCategory(
   return { updated: count ?? 0 };
 }
 
+const estValueEditsSchema = z
+  .array(
+    z.object({
+      id: z.string().min(1),
+      est_value: z.number().min(0, "Value can't be negative").nullable(),
+    })
+  )
+  .min(1)
+  .max(2000);
+
+/** Save inline-edited estimated values in one bulk write. Each row's est_value
+ * is updated independently (null clears it). RLS scopes to the current user. */
+export async function bulkSetEstValues(
+  edits: unknown
+): Promise<{ error?: string; updated?: number }> {
+  const { supabase, user } = await requireUser();
+
+  const parsed = estValueEditsSchema.safeParse(edits);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid values." };
+  }
+
+  for (const { id, est_value } of parsed.data) {
+    const { error } = await supabase
+      .from("items")
+      .update({ est_value })
+      .eq("id", id)
+      .eq("user_id", user.id);
+    if (error) return { error: dbError(error.message) };
+  }
+
+  revalidatePath("/inventory");
+  return { updated: parsed.data.length };
+}
+
 const bundleSaleSchema = z.object({
   sale_date: z
     .string()

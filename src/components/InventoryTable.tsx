@@ -8,6 +8,7 @@ import {
   bulkMarkOpened,
   bulkMarkSold,
   bulkSetCategory,
+  bulkSetEstValues,
   updateFulfillment,
 } from "@/app/(app)/actions";
 import {
@@ -56,7 +57,53 @@ export default function InventoryTable({ items }: { items: Item[] }) {
     new Date().toISOString().slice(0, 10)
   );
   const [error, setError] = useState<string | null>(null);
+  // Inline est-value edits, keyed by item id, held until "Save changes".
+  const [edits, setEdits] = useState<Record<string, string>>({});
   const [pending, startTransition] = useTransition();
+
+  // The string shown in an item's est-value input: the pending edit if any,
+  // else the stored value.
+  const estString = (item: Item) =>
+    item.est_value === null ? "" : String(item.est_value);
+  const estInput = (item: Item) =>
+    edits[item.id] !== undefined ? edits[item.id] : estString(item);
+  function setEst(id: string, val: string) {
+    setEdits((prev) => ({ ...prev, [id]: val }));
+  }
+  function itemDirty(item: Item): boolean {
+    const raw = edits[item.id];
+    if (raw === undefined) return false;
+    const t = raw.trim();
+    const orig = item.est_value === null ? null : Number(item.est_value);
+    if (t === "") return orig !== null; // cleared a value
+    const n = Number(t);
+    if (Number.isNaN(n)) return true;
+    return n !== orig;
+  }
+  const dirtyItems = items.filter(itemDirty);
+  const invalidCount = dirtyItems.filter((i) => {
+    const t = edits[i.id].trim();
+    if (t === "") return false;
+    const n = Number(t);
+    return Number.isNaN(n) || n < 0;
+  }).length;
+
+  function saveEdits() {
+    if (dirtyItems.length === 0 || invalidCount > 0) return;
+    setError(null);
+    const updates = dirtyItems.map((i) => {
+      const t = edits[i.id].trim();
+      return { id: i.id, est_value: t === "" ? null : Number(t) };
+    });
+    startTransition(async () => {
+      const res = await bulkSetEstValues(updates);
+      if (res.error) setError(res.error);
+      else {
+        setEdits({});
+        router.refresh();
+      }
+    });
+  }
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
@@ -195,6 +242,37 @@ export default function InventoryTable({ items }: { items: Item[] }) {
 
   return (
     <div>
+      {dirtyItems.length > 0 && (
+        <div className="sticky top-0 z-10 mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm dark:border-amber-900 dark:bg-amber-950/50">
+          <span className="font-medium text-amber-800 dark:text-amber-200">
+            {dirtyItems.length} unsaved value{dirtyItems.length === 1 ? "" : "s"}
+          </span>
+          <button
+            type="button"
+            onClick={saveEdits}
+            disabled={pending || invalidCount > 0}
+            className="rounded-md bg-blue-600 px-3 py-1.5 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            {pending ? "Saving…" : "Save changes"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setEdits({})}
+            disabled={pending}
+            className="text-zinc-600 hover:underline disabled:opacity-50 dark:text-zinc-300"
+          >
+            Discard
+          </button>
+          {invalidCount > 0 && (
+            <span className="text-red-600 dark:text-red-400">
+              Fix {invalidCount} invalid value{invalidCount === 1 ? "" : "s"}
+            </span>
+          )}
+          {error && (
+            <span className="text-red-600 dark:text-red-400">{error}</span>
+          )}
+        </div>
+      )}
       <div className="mb-3 flex flex-wrap items-center gap-3">
         <input
           value={search}
@@ -343,16 +421,29 @@ export default function InventoryTable({ items }: { items: Item[] }) {
                   <span className="font-medium">
                     {formatMoney(Number(item.purchase_price))}
                   </span>
-                  {item.est_value !== null && (
-                    <span title="Your estimated value">
-                      ≈ {formatMoney(Number(item.est_value))}
-                    </span>
-                  )}
                   {item.quantity > 1 && <span>Qty {item.quantity}</span>}
                   {item.purchase_platform && <span>{item.purchase_platform}</span>}
                   {item.purchase_date && (
                     <span>{formatDate(item.purchase_date)}</span>
                   )}
+                </div>
+                <div className="mt-2 flex items-center gap-2 text-sm">
+                  <span className="text-zinc-500">Est. value</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    inputMode="decimal"
+                    value={estInput(item)}
+                    onChange={(e) => setEst(item.id, e.target.value)}
+                    placeholder="—"
+                    aria-label={`Estimated value for ${item.name}`}
+                    className={`w-28 rounded-md border px-2 py-1 text-right dark:bg-zinc-950 ${
+                      itemDirty(item)
+                        ? "border-amber-400 ring-1 ring-amber-300 dark:border-amber-600 dark:ring-amber-800"
+                        : "border-zinc-300 dark:border-zinc-700"
+                    }`}
+                  />
                 </div>
                 <label className="mt-2 flex items-center gap-2 text-sm">
                   <input
@@ -455,11 +546,21 @@ export default function InventoryTable({ items }: { items: Item[] }) {
                   {formatMoney(Number(item.purchase_price))}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  {item.est_value === null ? (
-                    <span className="text-zinc-400">—</span>
-                  ) : (
-                    formatMoney(Number(item.est_value))
-                  )}
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    inputMode="decimal"
+                    value={estInput(item)}
+                    onChange={(e) => setEst(item.id, e.target.value)}
+                    placeholder="—"
+                    aria-label={`Estimated value for ${item.name}`}
+                    className={`w-24 rounded-md border px-2 py-1 text-right text-sm dark:bg-zinc-950 ${
+                      itemDirty(item)
+                        ? "border-amber-400 ring-1 ring-amber-300 dark:border-amber-600 dark:ring-amber-800"
+                        : "border-zinc-300 dark:border-zinc-700"
+                    }`}
+                  />
                 </td>
                 <td className="px-4 py-3">{formatDate(item.purchase_date)}</td>
                 <td className="px-4 py-3 text-center">

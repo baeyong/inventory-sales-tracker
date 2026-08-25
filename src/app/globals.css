@@ -25,6 +25,18 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Hide the up/down spinner on number inputs that opt in with .no-spinner,
+   while keeping the numeric keypad on mobile. */
+.no-spinner::-webkit-outer-spin-button,
+.no-spinner::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.no-spinner {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
 /* The native date picker's calendar icon is dark by default and nearly
    invisible on the dark input background — make it white in dark mode. */
 input[type="date"]::-webkit-calendar-picker-indicator {

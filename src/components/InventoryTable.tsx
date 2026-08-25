@@ -438,7 +438,7 @@ export default function InventoryTable({ items }: { items: Item[] }) {
                     onChange={(e) => setEst(item.id, e.target.value)}
                     placeholder="—"
                     aria-label={`Estimated value for ${item.name}`}
-                    className={`w-28 rounded-md border px-2 py-1 text-right dark:bg-zinc-950 ${
+                    className={`no-spinner w-28 rounded-md border px-2 py-1 text-right dark:bg-zinc-950 ${
                       itemDirty(item)
                         ? "border-amber-400 ring-1 ring-amber-300 dark:border-amber-600 dark:ring-amber-800"
                         : "border-zinc-300 dark:border-zinc-700"
@@ -555,7 +555,7 @@ export default function InventoryTable({ items }: { items: Item[] }) {
                     onChange={(e) => setEst(item.id, e.target.value)}
                     placeholder="—"
                     aria-label={`Estimated value for ${item.name}`}
-                    className={`w-24 rounded-md border px-2 py-1 text-right text-sm dark:bg-zinc-950 ${
+                    className={`no-spinner w-24 rounded-md border px-2 py-1 text-right text-sm dark:bg-zinc-950 ${
                       itemDirty(item)
                         ? "border-amber-400 ring-1 ring-amber-300 dark:border-amber-600 dark:ring-amber-800"
                         : "border-zinc-300 dark:border-zinc-700"

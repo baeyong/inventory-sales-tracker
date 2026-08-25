@@ -64,7 +64,7 @@ export default async function InventoryPage({
                 ? ([
                     { label: "Est. value", value: formatMoney(totalValue) },
                     {
-                      label: "Potential",
+                      label: "Potential profit",
                       value: formatMoney(potential),
                       tone: potential >= 0 ? "pos" : "neg",
                     },

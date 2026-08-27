@@ -31,6 +31,7 @@ function Section({
   pending,
   bundleMeta,
   onToggle,
+  total,
 }: {
   title: string;
   items: Item[];
@@ -39,6 +40,7 @@ function Section({
   pending: boolean;
   bundleMeta: Map<string, BundleMeta>;
   onToggle: (item: Item, field: Field) => void;
+  total?: number;
 }) {
   // Keep bundle members side by side, one row (one checkbox) per bundle.
   const ordered = groupBundles(items, bundleMeta);
@@ -54,15 +56,22 @@ function Section({
     <div className="rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
       <div className="flex items-center justify-between border-b border-zinc-100 px-4 py-3 dark:border-zinc-800">
         <h2 className="font-semibold">{title}</h2>
-        <span
-          className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-            items.length === 0
-              ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
-              : "bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
-          }`}
-        >
-          {items.length === 0 ? "All done" : items.length}
-        </span>
+        <div className="flex items-center gap-2">
+          {total !== undefined && items.length > 0 && (
+            <span className="text-sm font-semibold text-amber-700 dark:text-amber-300">
+              {formatMoney(total)}
+            </span>
+          )}
+          <span
+            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+              items.length === 0
+                ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                : "bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
+            }`}
+          >
+            {items.length === 0 ? "All done" : items.length}
+          </span>
+        </div>
       </div>
       {items.length === 0 ? (
         <p className="px-4 py-6 text-sm text-zinc-500">Nothing waiting. 🎉</p>
@@ -160,6 +169,10 @@ export default function PendingLists({
 
   const awaitingPayment = items.filter((i) => !i.payment_received);
   const toShip = items.filter((i) => !i.shipped);
+  const awaitingTotal = awaitingPayment.reduce(
+    (sum, i) => sum + (i.sale_payout === null ? 0 : Number(i.sale_payout)),
+    0
+  );
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -171,6 +184,7 @@ export default function PendingLists({
         pending={pending}
         bundleMeta={bundleMeta}
         onToggle={toggle}
+        total={awaitingTotal}
       />
       <Section
         title="📦 To ship"

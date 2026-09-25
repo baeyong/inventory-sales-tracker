@@ -728,6 +728,64 @@ export async function bulkMarkUnsold(
   return { returned: count ?? 0 };
 }
 
+/** Move items into the Personal Collection: keepers you are not selling. They
+ * leave Inventory and, unlike Investments, are reported separately from
+ * business stock in the Tax Summary. Reversible with bulkUnmarkPersonal. */
+export async function bulkMarkPersonal(
+  ids: unknown,
+  movedDate: unknown
+): Promise<{ error?: string; moved?: number }> {
+  const { supabase, user } = await requireUser();
+
+  const idsParsed = idListSchema.safeParse(ids);
+  const dateParsed = z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Date is required")
+    .safeParse(movedDate);
+  if (!idsParsed.success) return { error: "No items selected." };
+  if (!dateParsed.success) {
+    return { error: dateParsed.error.issues[0]?.message ?? "Invalid date." };
+  }
+
+  const { error, count } = await supabase
+    .from("items")
+    .update({ personal_at: dateParsed.data }, { count: "exact" })
+    .in("id", idsParsed.data)
+    .is("sale_date", null) // sold items aren't keepers
+    .is("opened_at", null) // neither is ripped product
+    .is("invested_at", null) // move a holding back to Inventory first
+    .eq("user_id", user.id);
+  if (error) return { error: dbError(error.message) };
+
+  revalidatePath("/inventory");
+  revalidatePath("/collection");
+  revalidatePath("/dashboard");
+  return { moved: count ?? 0 };
+}
+
+/** Move a keeper back into Inventory. */
+export async function bulkUnmarkPersonal(
+  ids: unknown
+): Promise<{ error?: string; returned?: number }> {
+  const { supabase, user } = await requireUser();
+
+  const parsed = idListSchema.safeParse(ids);
+  if (!parsed.success) return { error: "No items selected." };
+
+  const { error, count } = await supabase
+    .from("items")
+    .update({ personal_at: null }, { count: "exact" })
+    .in("id", parsed.data)
+    .eq("user_id", user.id);
+  if (error) return { error: dbError(error.message) };
+
+  revalidatePath("/inventory");
+  revalidatePath("/collection");
+  revalidatePath("/dashboard");
+  return { returned: count ?? 0 };
+}
+
 /** Move items into Investments: long-term holds you don't plan to flip soon.
  * They leave Inventory but stay owned and unsold, so they keep their cost and
  * estimated value. Reversible with bulkUnmarkInvestment. */
@@ -1014,7 +1072,8 @@ const ITEM_COLUMNS = [
   "card_number",
   "player", "condition", "grade_company", "grade", "sale_date", "sale_platform",
   "sale_payout", "buyer", "payment_received", "shipped", "bundle_id",
-  "opened_at", "invested_at", "market_platform", "market_search",
+  "opened_at", "invested_at", "personal_at", "market_platform",
+  "market_search",
   "created_at", "updated_at",
 ] as const;
 const EXPENSE_COLUMNS = [

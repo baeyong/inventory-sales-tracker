@@ -9,6 +9,7 @@ export type SortKey =
   | "est_value"
   | "opened_at"
   | "invested_at"
+  | "personal_at"
   | "sale_date"
   | "sale_payout"
   | "profit";
@@ -59,6 +60,8 @@ function itemValue(item: Item, key: SortKey): string | number | null {
       return item.opened_at;
     case "invested_at":
       return item.invested_at;
+    case "personal_at":
+      return item.personal_at;
     case "sale_date":
       return item.sale_date;
     case "sale_payout":

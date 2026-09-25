@@ -23,11 +23,13 @@ type Status =
   | "Sold"
   | "Opened"
   | "Investment"
+  | "Personal"
   | "Expense";
 function itemStatus(it: Row): Status {
   if (it.sale_date) return "Sold";
   if (it.opened_at) return "Opened";
   if (it.invested_at) return "Investment";
+  if (it.personal_at) return "Personal";
   return "In inventory";
 }
 
@@ -59,6 +61,8 @@ export function buildTaxCsv(items: Row[], expenses: Row[]): string {
   let inventoryCost = 0;
   let investmentCount = 0;
   let investmentCost = 0;
+  let personalCount = 0;
+  let personalCost = 0;
   let soldMissingPayout = 0;
 
   for (const it of items) {
@@ -84,6 +88,9 @@ export function buildTaxCsv(items: Row[], expenses: Row[]): string {
     } else if (status === "Investment") {
       investmentCount++;
       investmentCost += cost;
+    } else if (status === "Personal") {
+      personalCount++;
+      personalCost += cost;
     } else {
       inventoryCount++;
       inventoryCost += cost;
@@ -125,6 +132,12 @@ export function buildTaxCsv(items: Row[], expenses: Row[]): string {
   );
   out.push(
     line([
+      "Personal",
+      "Kept for personal use and not for sale at all. Reported here for completeness only - its cost is deliberately excluded from the business inventory totals above, so treat it as a personal item rather than stock.",
+    ])
+  );
+  out.push(
+    line([
       "Opened",
       "Sealed product opened instead of resold. Its cost appears as Ripped product cost; anything pulled from it sits in inventory at $0 cost.",
     ])
@@ -162,9 +175,15 @@ export function buildTaxCsv(items: Row[], expenses: Row[]): string {
   out.push(line(["Investment cost (held long-term)", money(investmentCost)]));
   out.push(
     line([
-      "Total unsold cost (inventory + investments)",
+      "Total business unsold cost (inventory + investments)",
       money(inventoryCost + investmentCost),
     ])
+  );
+  out.push(
+    line(["Personal collection items (not for sale)", String(personalCount)])
+  );
+  out.push(
+    line(["Personal collection cost (not for sale)", money(personalCost)])
   );
   if (soldMissingPayout > 0) {
     out.push(line(["Sold missing a payout (excluded)", String(soldMissingPayout)]));
@@ -232,7 +251,9 @@ export function buildTaxCsv(items: Row[], expenses: Row[]): string {
           ? str(it.opened_at)
           : status === "Investment"
             ? str(it.invested_at)
-            : "";
+            : status === "Personal"
+              ? str(it.personal_at)
+              : "";
     lines.push({
       status,
       date: str(it.purchase_date),
@@ -270,14 +291,16 @@ export function buildTaxCsv(items: Row[], expenses: Row[]): string {
     });
   }
 
-  // Group by status (Sold, Opened, Expense, Investment, In inventory),
+  // Group by status (Sold, Opened, Expense, Investment, Personal,
+  // In inventory),
   // newest first within each group.
   const order: Record<Status, number> = {
     Sold: 0,
     Opened: 1,
     Expense: 2,
     Investment: 3,
-    "In inventory": 4,
+    Personal: 4,
+    "In inventory": 5,
   };
   lines.sort((a, b) =>
     order[a.status] !== order[b.status]

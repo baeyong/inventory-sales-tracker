@@ -61,10 +61,11 @@ export default async function DashboardPage() {
   const { data } = await supabase.from("items").select("*");
   const items = (data ?? []) as Item[];
 
-  // Active stock only: ripped product is consumed and Investments are
-  // long-term holdings, so neither counts toward these figures.
+  // Active stock only. Ripped product is consumed, Investments are long-term
+  // holdings, and the Personal Collection isn't for sale, so none of them
+  // count toward these figures.
   const unsold = items.filter(
-    (i) => !i.sale_date && !i.opened_at && !i.invested_at
+    (i) => !i.sale_date && !i.opened_at && !i.invested_at && !i.personal_at
   );
   const sold = items.filter((i) => i.sale_date);
   // Long-term holdings: still owned and unsold, just not up for sale.
@@ -78,10 +79,37 @@ export default async function DashboardPage() {
     (s, i) => s + Number(i.est_value),
     0
   );
+  // Personal collection: owned, unsold, and never for sale.
+  const keepers = items.filter((i) => !i.sale_date && i.personal_at);
+  const keeperCost = keepers.reduce((s, i) => s + Number(i.purchase_price), 0);
+  const keeperValued = keepers.filter((i) => i.est_value !== null);
+  const keeperValue = keeperValued.reduce(
+    (s, i) => s + Number(i.est_value),
+    0
+  );
   // Profit math only counts sales whose payout is known.
   const soldKnown = sold.filter((i) => i.sale_payout !== null);
 
   const invested = unsold.reduce((s, i) => s + Number(i.purchase_price), 0);
+
+  // Spell out what the inventory figure leaves out so it can't read as a total.
+  const setAside = [
+    holdings.length > 0 ? "investments" : null,
+    keepers.length > 0 ? "personal" : null,
+  ].filter(Boolean);
+  const investedSub =
+    setAside.length > 0
+      ? `${formatMoney(invested)} invested · excludes ${setAside.join(" & ")}`
+      : `${formatMoney(invested)} invested`;
+
+  // Four base tiles, plus one for each set-aside group that has anything in it.
+  const tileCount = 4 + setAside.length;
+  const tileCols =
+    tileCount === 6
+      ? "lg:grid-cols-3 xl:grid-cols-6"
+      : tileCount === 5
+        ? "lg:grid-cols-5"
+        : "lg:grid-cols-4";
   const revenue = soldKnown.reduce((s, i) => s + Number(i.sale_payout), 0);
   const profit = soldKnown.reduce(
     (s, i) => s + Number(i.sale_payout) - Number(i.purchase_price),
@@ -118,7 +146,8 @@ export default async function DashboardPage() {
   >();
   for (const i of items) {
     // Ripped product and long-term holdings aren't active stock.
-    if (!i.sale_date && (i.opened_at || i.invested_at)) continue;
+    if (!i.sale_date && (i.opened_at || i.invested_at || i.personal_at))
+      continue;
     const row = byCategory.get(i.category) ?? {
       inStock: 0,
       invested: 0,
@@ -147,18 +176,12 @@ export default async function DashboardPage() {
       <h1 className="text-xl font-semibold">Dashboard</h1>
 
       <div
-        className={`mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 ${
-          holdings.length > 0 ? "lg:grid-cols-5" : "lg:grid-cols-4"
-        }`}
+        className={`mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 ${tileCols}`}
       >
         <StatTile
           label="In inventory"
           value={String(unsold.length)}
-          sub={
-            holdings.length > 0
-              ? `${formatMoney(invested)} invested · excludes investments`
-              : `${formatMoney(invested)} invested`
-          }
+          sub={investedSub}
         />
         {holdings.length > 0 && (
           <StatTile
@@ -168,6 +191,17 @@ export default async function DashboardPage() {
               holdingValued.length > 0
                 ? `${formatMoney(holdingCost)} cost · ${formatMoney(holdingValue)} est. value`
                 : `${formatMoney(holdingCost)} cost`
+            }
+          />
+        )}
+        {keepers.length > 0 && (
+          <StatTile
+            label="Personal collection"
+            value={String(keepers.length)}
+            sub={
+              keeperValued.length > 0
+                ? `${formatMoney(keeperCost)} cost · ${formatMoney(keeperValue)} est. value`
+                : `${formatMoney(keeperCost)} cost`
             }
           />
         )}

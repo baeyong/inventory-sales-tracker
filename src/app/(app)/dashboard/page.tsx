@@ -61,10 +61,23 @@ export default async function DashboardPage() {
   const { data } = await supabase.from("items").select("*");
   const items = (data ?? []) as Item[];
 
-  // Opened ("ripped") product is neither in stock nor sold — it's consumed, so
-  // it stays out of both the inventory and sales figures.
-  const unsold = items.filter((i) => !i.sale_date && !i.opened_at);
+  // Active stock only: ripped product is consumed and Investments are
+  // long-term holdings, so neither counts toward these figures.
+  const unsold = items.filter(
+    (i) => !i.sale_date && !i.opened_at && !i.invested_at
+  );
   const sold = items.filter((i) => i.sale_date);
+  // Long-term holdings: still owned and unsold, just not up for sale.
+  const holdings = items.filter((i) => !i.sale_date && i.invested_at);
+  const holdingCost = holdings.reduce(
+    (s, i) => s + Number(i.purchase_price),
+    0
+  );
+  const holdingValued = holdings.filter((i) => i.est_value !== null);
+  const holdingValue = holdingValued.reduce(
+    (s, i) => s + Number(i.est_value),
+    0
+  );
   // Profit math only counts sales whose payout is known.
   const soldKnown = sold.filter((i) => i.sale_payout !== null);
 
@@ -104,7 +117,8 @@ export default async function DashboardPage() {
     { inStock: number; invested: number; soldCount: number; revenue: number; catProfit: number }
   >();
   for (const i of items) {
-    if (i.opened_at && !i.sale_date) continue; // ripped product isn't in stock
+    // Ripped product and long-term holdings aren't active stock.
+    if (!i.sale_date && (i.opened_at || i.invested_at)) continue;
     const row = byCategory.get(i.category) ?? {
       inStock: 0,
       invested: 0,
@@ -132,12 +146,31 @@ export default async function DashboardPage() {
     <div>
       <h1 className="text-xl font-semibold">Dashboard</h1>
 
-      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div
+        className={`mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 ${
+          holdings.length > 0 ? "lg:grid-cols-5" : "lg:grid-cols-4"
+        }`}
+      >
         <StatTile
           label="In inventory"
           value={String(unsold.length)}
-          sub={`${formatMoney(invested)} invested`}
+          sub={
+            holdings.length > 0
+              ? `${formatMoney(invested)} invested · excludes investments`
+              : `${formatMoney(invested)} invested`
+          }
         />
+        {holdings.length > 0 && (
+          <StatTile
+            label="Investments"
+            value={String(holdings.length)}
+            sub={
+              holdingValued.length > 0
+                ? `${formatMoney(holdingCost)} cost · ${formatMoney(holdingValue)} est. value`
+                : `${formatMoney(holdingCost)} cost`
+            }
+          />
+        )}
         <StatTile
           label="Total sales"
           value={String(sold.length)}

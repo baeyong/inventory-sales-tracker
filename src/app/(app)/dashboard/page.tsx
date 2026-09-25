@@ -61,9 +61,11 @@ export default async function DashboardPage() {
   const { data } = await supabase.from("items").select("*");
   const items = (data ?? []) as Item[];
 
-  // Opened ("ripped") product is neither in stock nor sold — it's consumed, so
-  // it stays out of both the inventory and sales figures.
-  const unsold = items.filter((i) => !i.sale_date && !i.opened_at);
+  // Active stock only: ripped product is consumed and Investments are
+  // long-term holdings, so neither counts toward these figures.
+  const unsold = items.filter(
+    (i) => !i.sale_date && !i.opened_at && !i.invested_at
+  );
   const sold = items.filter((i) => i.sale_date);
   // Profit math only counts sales whose payout is known.
   const soldKnown = sold.filter((i) => i.sale_payout !== null);
@@ -104,7 +106,8 @@ export default async function DashboardPage() {
     { inStock: number; invested: number; soldCount: number; revenue: number; catProfit: number }
   >();
   for (const i of items) {
-    if (i.opened_at && !i.sale_date) continue; // ripped product isn't in stock
+    // Ripped product and long-term holdings aren't active stock.
+    if (!i.sale_date && (i.opened_at || i.invested_at)) continue;
     const row = byCategory.get(i.category) ?? {
       inStock: 0,
       invested: 0,

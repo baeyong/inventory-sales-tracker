@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   bulkDeleteItems,
+  bulkMarkInvestment,
   bulkMarkOpened,
   bulkMarkSold,
   bulkSetCategory,
@@ -202,6 +203,25 @@ export default function InventoryTable({ items }: { items: Item[] }) {
       ? bundleTotalNum / selected.size
       : null;
 
+  // Park items as long-term holdings; they leave Inventory but keep their cost
+  // and value, and can be moved back any time.
+  function moveToInvestments() {
+    if (selected.size === 0) return;
+    setError(null);
+    startTransition(async () => {
+      const res = await bulkMarkInvestment(
+        [...selected],
+        new Date().toISOString().slice(0, 10)
+      );
+      if (res.error) {
+        setError(res.error);
+      } else {
+        setSelected(new Set());
+        router.push("/investments");
+      }
+    });
+  }
+
   function ripSelected() {
     if (selected.size === 0 || ripDate === "") return;
     setError(null);
@@ -344,6 +364,14 @@ export default function InventoryTable({ items }: { items: Item[] }) {
             className="rounded-md border border-violet-300 px-3 py-1.5 font-medium text-violet-700 hover:bg-violet-50 disabled:opacity-50 dark:border-violet-900 dark:text-violet-300 dark:hover:bg-violet-950"
           >
             Rip open
+          </button>
+          <button
+            type="button"
+            onClick={moveToInvestments}
+            disabled={pending}
+            className="rounded-md border border-blue-300 px-3 py-1.5 font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950"
+          >
+            Move to investments
           </button>
           <button
             type="button"

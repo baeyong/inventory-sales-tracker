@@ -18,10 +18,16 @@ function csvCell(v: unknown): string {
 }
 const line = (cells: unknown[]): string => cells.map(csvCell).join(",");
 
-type Status = "In inventory" | "Sold" | "Opened" | "Expense";
+type Status =
+  | "In inventory"
+  | "Sold"
+  | "Opened"
+  | "Investment"
+  | "Expense";
 function itemStatus(it: Row): Status {
   if (it.sale_date) return "Sold";
   if (it.opened_at) return "Opened";
+  if (it.invested_at) return "Investment";
   return "In inventory";
 }
 
@@ -208,7 +214,8 @@ export function buildTaxCsv(items: Row[], expenses: Row[]): string {
     Sold: 0,
     Opened: 1,
     Expense: 2,
-    "In inventory": 3,
+    Investment: 3,
+    "In inventory": 4,
   };
   lines.sort((a, b) =>
     order[a.status] !== order[b.status]

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import {
   bulkDeleteItems,
   bulkMarkInvestment,
+  bulkMarkPersonal,
   bulkMarkOpened,
   bulkMarkSold,
   bulkSetCategory,
@@ -203,6 +204,25 @@ export default function InventoryTable({ items }: { items: Item[] }) {
       ? bundleTotalNum / selected.size
       : null;
 
+  // Keepers: out of Inventory and, unlike Investments, reported apart from
+  // business stock at tax time.
+  function keepPersonal() {
+    if (selected.size === 0) return;
+    setError(null);
+    startTransition(async () => {
+      const res = await bulkMarkPersonal(
+        [...selected],
+        new Date().toISOString().slice(0, 10)
+      );
+      if (res.error) {
+        setError(res.error);
+      } else {
+        setSelected(new Set());
+        router.push("/collection");
+      }
+    });
+  }
+
   // Park items as long-term holdings; they leave Inventory but keep their cost
   // and value, and can be moved back any time.
   function moveToInvestments() {
@@ -372,6 +392,14 @@ export default function InventoryTable({ items }: { items: Item[] }) {
             className="rounded-md border border-blue-300 px-3 py-1.5 font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950"
           >
             Move to investments
+          </button>
+          <button
+            type="button"
+            onClick={keepPersonal}
+            disabled={pending}
+            className="rounded-md border border-teal-300 px-3 py-1.5 font-medium text-teal-700 hover:bg-teal-50 disabled:opacity-50 dark:border-teal-900 dark:text-teal-300 dark:hover:bg-teal-950"
+          >
+            Keep (personal)
           </button>
           <button
             type="button"

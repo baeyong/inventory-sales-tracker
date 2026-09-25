@@ -57,6 +57,8 @@ export function buildTaxCsv(items: Row[], expenses: Row[]): string {
   let rippedCost = 0;
   let inventoryCount = 0;
   let inventoryCost = 0;
+  let investmentCount = 0;
+  let investmentCost = 0;
   let soldMissingPayout = 0;
 
   for (const it of items) {
@@ -79,6 +81,9 @@ export function buildTaxCsv(items: Row[], expenses: Row[]): string {
     } else if (status === "Opened") {
       rippedCost += cost;
       yr(yearOf(it.opened_at)).ripped += cost;
+    } else if (status === "Investment") {
+      investmentCount++;
+      investmentCost += cost;
     } else {
       inventoryCount++;
       inventoryCost += cost;
@@ -99,6 +104,51 @@ export function buildTaxCsv(items: Row[], expenses: Row[]): string {
   out.push(line(["Tax Summary", stamp]));
   out.push("");
 
+  out.push("NOTES - WHAT EACH TERM MEANS");
+  out.push(
+    line([
+      "Sold",
+      "A recorded sale. Proceeds is the net payout received; Profit is proceeds minus that item's cost.",
+    ])
+  );
+  out.push(
+    line([
+      "In inventory",
+      "Unsold stock held for sale, counted at cost.",
+    ])
+  );
+  out.push(
+    line([
+      "Investment",
+      "Unsold and still owned, but held long-term rather than for near-term sale. Counted at cost. Moving an item here is not a sale and not an expense - only its classification changes.",
+    ])
+  );
+  out.push(
+    line([
+      "Opened",
+      "Sealed product opened instead of resold. Its cost appears as Ripped product cost; anything pulled from it sits in inventory at $0 cost.",
+    ])
+  );
+  out.push(
+    line([
+      "Expense",
+      "A business cost that is not inventory, such as supplies, shipping or fees.",
+    ])
+  );
+  out.push(
+    line([
+      "Ripped cost and Expenses",
+      "Reported on their own lines and not folded into Profit, so they can be applied however the rules require.",
+    ])
+  );
+  out.push(
+    line([
+      "Excluded",
+      "Sold rows with no payout recorded are left out of the profit totals and counted below instead.",
+    ])
+  );
+  out.push("");
+
   out.push("ALL TIME");
   out.push(line(["Sales proceeds", money(proceeds)]));
   out.push(line(["Cost of items sold", money(costOfSold)]));
@@ -106,8 +156,16 @@ export function buildTaxCsv(items: Row[], expenses: Row[]): string {
   out.push(line(["Ripped product cost", money(rippedCost)]));
   out.push(line(["Expenses", money(expensesTotal)]));
   out.push(line(["Net (profit − ripped − expenses)", money(net)]));
-  out.push(line(["Inventory items on hand", String(inventoryCount)]));
-  out.push(line(["Inventory cost on hand", money(inventoryCost)]));
+  out.push(line(["Inventory items on hand (held for sale)", String(inventoryCount)]));
+  out.push(line(["Inventory cost on hand (held for sale)", money(inventoryCost)]));
+  out.push(line(["Investment items (held long-term)", String(investmentCount)]));
+  out.push(line(["Investment cost (held long-term)", money(investmentCost)]));
+  out.push(
+    line([
+      "Total unsold cost (inventory + investments)",
+      money(inventoryCost + investmentCost),
+    ])
+  );
   if (soldMissingPayout > 0) {
     out.push(line(["Sold missing a payout (excluded)", String(soldMissingPayout)]));
   }
@@ -151,7 +209,7 @@ export function buildTaxCsv(items: Row[], expenses: Row[]): string {
       "Category",
       "Acquired",
       "Cost",
-      "Sold/Opened",
+      "Sold / Opened / Moved",
       "Proceeds",
       "Profit",
       "Source",
@@ -166,12 +224,15 @@ export function buildTaxCsv(items: Row[], expenses: Row[]): string {
     const status = itemStatus(it);
     const cost = num(it.purchase_price) ?? 0;
     const payout = num(it.sale_payout);
-    const soldOpened =
+    // The date behind this row's status: sold, opened, or moved to Investments.
+    const statusDate =
       status === "Sold"
         ? str(it.sale_date)
         : status === "Opened"
           ? str(it.opened_at)
-          : "";
+          : status === "Investment"
+            ? str(it.invested_at)
+            : "";
     lines.push({
       status,
       date: str(it.purchase_date),
@@ -181,7 +242,7 @@ export function buildTaxCsv(items: Row[], expenses: Row[]): string {
         str(it.category),
         str(it.purchase_date),
         money(cost),
-        soldOpened,
+        statusDate,
         status === "Sold" && payout !== null ? money(payout) : "",
         status === "Sold" && payout !== null ? money(payout - cost) : "",
         str(it.purchase_platform),
@@ -209,7 +270,8 @@ export function buildTaxCsv(items: Row[], expenses: Row[]): string {
     });
   }
 
-  // Group by status (Sold, Opened, Expense, In inventory), newest first within.
+  // Group by status (Sold, Opened, Expense, Investment, In inventory),
+  // newest first within each group.
   const order: Record<Status, number> = {
     Sold: 0,
     Opened: 1,

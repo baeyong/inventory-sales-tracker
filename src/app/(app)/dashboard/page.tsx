@@ -67,6 +67,17 @@ export default async function DashboardPage() {
     (i) => !i.sale_date && !i.opened_at && !i.invested_at
   );
   const sold = items.filter((i) => i.sale_date);
+  // Long-term holdings: still owned and unsold, just not up for sale.
+  const holdings = items.filter((i) => !i.sale_date && i.invested_at);
+  const holdingCost = holdings.reduce(
+    (s, i) => s + Number(i.purchase_price),
+    0
+  );
+  const holdingValued = holdings.filter((i) => i.est_value !== null);
+  const holdingValue = holdingValued.reduce(
+    (s, i) => s + Number(i.est_value),
+    0
+  );
   // Profit math only counts sales whose payout is known.
   const soldKnown = sold.filter((i) => i.sale_payout !== null);
 
@@ -135,12 +146,31 @@ export default async function DashboardPage() {
     <div>
       <h1 className="text-xl font-semibold">Dashboard</h1>
 
-      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div
+        className={`mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 ${
+          holdings.length > 0 ? "lg:grid-cols-5" : "lg:grid-cols-4"
+        }`}
+      >
         <StatTile
           label="In inventory"
           value={String(unsold.length)}
-          sub={`${formatMoney(invested)} invested`}
+          sub={
+            holdings.length > 0
+              ? `${formatMoney(invested)} invested · excludes investments`
+              : `${formatMoney(invested)} invested`
+          }
         />
+        {holdings.length > 0 && (
+          <StatTile
+            label="Investments"
+            value={String(holdings.length)}
+            sub={
+              holdingValued.length > 0
+                ? `${formatMoney(holdingCost)} cost · ${formatMoney(holdingValue)} est. value`
+                : `${formatMoney(holdingCost)} cost`
+            }
+          />
+        )}
         <StatTile
           label="Total sales"
           value={String(sold.length)}

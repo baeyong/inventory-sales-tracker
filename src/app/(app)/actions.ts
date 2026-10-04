@@ -91,6 +91,7 @@ const itemSchema = z
     grade: optionalText,
     market_platform: optionalText,
     market_search: optionalText,
+    ripped_from_id: optionalText,
   })
   .transform((v) =>
     /card/i.test(v.category)
@@ -139,6 +140,7 @@ function itemPayload(formData: FormData) {
     grade: formData.get("grade"),
     market_platform: formData.get("market_platform"),
     market_search: formData.get("market_search"),
+    ripped_from_id: formData.get("ripped_from_id"),
   });
 }
 
@@ -153,6 +155,92 @@ async function requireUser() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
   return { supabase, user };
+}
+
+type Db = Awaited<ReturnType<typeof createClient>>;
+
+export type RippedBox = {
+  id: string;
+  name: string;
+  purchase_price: number;
+  opened_at: string | null;
+  pulled: number; // how many items already point at this box
+};
+
+/** Ripped boxes a pulled card can be assigned to, newest first, each with the
+ * number of items already pulled from it so the form can show the split. */
+export async function listRippedBoxes(): Promise<RippedBox[]> {
+  const { supabase, user } = await requireUser();
+
+  const { data: boxes } = await supabase
+    .from("items")
+    .select("id, name, purchase_price, opened_at")
+    .eq("user_id", user.id)
+    .not("opened_at", "is", null)
+    .order("opened_at", { ascending: false });
+
+  const { data: links } = await supabase
+    .from("items")
+    .select("ripped_from_id")
+    .eq("user_id", user.id)
+    .not("ripped_from_id", "is", null);
+
+  const counts = new Map<string, number>();
+  for (const r of links ?? []) {
+    const k = r.ripped_from_id as string;
+    counts.set(k, (counts.get(k) ?? 0) + 1);
+  }
+
+  return (boxes ?? []).map((b) => ({
+    id: b.id as string,
+    name: b.name as string,
+    purchase_price: Number(b.purchase_price),
+    opened_at: b.opened_at as string | null,
+    pulled: counts.get(b.id as string) ?? 0,
+  }));
+}
+
+/** Spread a ripped box's cost evenly across every item pulled from it.
+ *
+ * Sold cards are included in the divisor, so the shares always add back up to
+ * exactly what the box cost — which does mean assigning a new card restates
+ * the cost basis (and therefore the recorded profit) of cards already sold.
+ * Call after anything that changes which items point at the box, or the box's
+ * own price. */
+async function resplitBox(db: Db, userId: string, boxId: string) {
+  const { data: box } = await db
+    .from("items")
+    .select("purchase_price")
+    .eq("id", boxId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (!box) return;
+
+  const { data: pulled } = await db
+    .from("items")
+    .select("id")
+    .eq("ripped_from_id", boxId)
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true });
+  const ids = (pulled ?? []).map((r) => r.id as string);
+  if (ids.length === 0) return;
+
+  // Same cent-by-cent distribution as a quantity > 1 add: split in integer
+  // cents and hand the remainder to the earliest rows, so three cards out of a
+  // $10 box come to 3.34 + 3.33 + 3.33 rather than three lots of 3.3333.
+  const totalCents = Math.round(Number(box.purchase_price) * 100);
+  const base = Math.floor(totalCents / ids.length);
+  const extra = totalCents - base * ids.length;
+
+  await Promise.all(
+    ids.map((id, i) =>
+      db
+        .from("items")
+        .update({ purchase_price: (base + (i < extra ? 1 : 0)) / 100 })
+        .eq("id", id)
+        .eq("user_id", userId)
+    )
+  );
 }
 
 export async function createItem(
@@ -184,7 +272,12 @@ export async function createItem(
     return { error: dbError(error.message), values: formValues(formData) };
   }
 
+  if (rest.ripped_from_id) {
+    await resplitBox(supabase, user.id, rest.ripped_from_id);
+  }
+
   revalidatePath("/inventory");
+  revalidatePath("/ripped");
   redirect("/inventory");
 }
 
@@ -202,6 +295,15 @@ export async function updateItem(
     return { error: firstError(parsed.error), values: formValues(formData) };
   }
 
+  // Read the old link before overwriting it: moving a card between boxes has
+  // to re-split both the box it left and the one it joined.
+  const { data: prev } = await supabase
+    .from("items")
+    .select("ripped_from_id, opened_at")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
   const { error } = await supabase
     .from("items")
     .update(parsed.data)
@@ -211,8 +313,17 @@ export async function updateItem(
     return { error: dbError(error.message), values: formValues(formData) };
   }
 
+  const affected = new Set<string>();
+  if (prev?.ripped_from_id) affected.add(prev.ripped_from_id as string);
+  if (parsed.data.ripped_from_id) affected.add(parsed.data.ripped_from_id);
+  // Editing a ripped box's own price has to flow down to everything pulled
+  // from it, otherwise the shares silently stop adding up.
+  if (prev?.opened_at) affected.add(id);
+  for (const boxId of affected) await resplitBox(supabase, user.id, boxId);
+
   revalidatePath("/inventory");
   revalidatePath("/sales");
+  revalidatePath("/ripped");
   redirect("/inventory");
 }
 
@@ -223,10 +334,22 @@ export async function deleteItem(formData: FormData) {
   const back = formData.get("back") === "/sales" ? "/sales" : "/inventory";
   if (!id) redirect(back);
 
+  const { data: gone } = await supabase
+    .from("items")
+    .select("ripped_from_id")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
   await supabase.from("items").delete().eq("id", id).eq("user_id", user.id);
+
+  if (gone?.ripped_from_id) {
+    await resplitBox(supabase, user.id, gone.ripped_from_id as string);
+  }
 
   revalidatePath("/inventory");
   revalidatePath("/sales");
+  revalidatePath("/ripped");
   redirect(back);
 }
 
@@ -683,6 +806,17 @@ export async function bulkDeleteItems(
   const parsed = idListSchema.safeParse(ids);
   if (!parsed.success) return { error: "No items selected." };
 
+  // Collect the boxes these items came from before the rows disappear.
+  const { data: doomed } = await supabase
+    .from("items")
+    .select("ripped_from_id")
+    .in("id", parsed.data)
+    .eq("user_id", user.id)
+    .not("ripped_from_id", "is", null);
+  const boxes = new Set(
+    (doomed ?? []).map((r) => r.ripped_from_id as string)
+  );
+
   const { error, count } = await supabase
     .from("items")
     .delete({ count: "exact" })
@@ -690,9 +824,12 @@ export async function bulkDeleteItems(
     .eq("user_id", user.id);
   if (error) return { error: error.message };
 
+  for (const boxId of boxes) await resplitBox(supabase, user.id, boxId);
+
   revalidatePath("/inventory");
   revalidatePath("/sales");
   revalidatePath("/dashboard");
+  revalidatePath("/ripped");
   return { deleted: count ?? 0 };
 }
 
@@ -1072,7 +1209,8 @@ const ITEM_COLUMNS = [
   "card_number",
   "player", "condition", "grade_company", "grade", "sale_date", "sale_platform",
   "sale_payout", "buyer", "payment_received", "shipped", "bundle_id",
-  "opened_at", "invested_at", "personal_at", "market_platform",
+  "opened_at", "ripped_from_id", "invested_at", "personal_at",
+  "market_platform",
   "market_search",
   "created_at", "updated_at",
 ] as const;

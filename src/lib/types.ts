@@ -46,6 +46,7 @@ export interface Item {
   shipped: boolean;
   bundle_id: string | null; // shared across items sold together
   opened_at: string | null; // YYYY-MM-DD it was ripped open, null = not opened
+  ripped_from_id: string | null; // the ripped box this was pulled from, null = bought on its own
   invested_at: string | null; // YYYY-MM-DD moved to Investments, null = normal inventory
   personal_at: string | null; // YYYY-MM-DD moved to Personal Collection, null = not a keeper
   market_platform: string | null; // marketplace key for value lookup (null = category default)

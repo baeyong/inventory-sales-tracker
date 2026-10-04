@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import ItemForm from "@/components/ItemForm";
+import { listRippedBoxes } from "@/app/(app)/actions";
 
 export const metadata = { title: "Add item · Resale Tracker" };
 
@@ -8,6 +9,7 @@ export default async function NewItemPage() {
   const supabase = await createClient();
   const { data } = await supabase.from("items").select("category");
   const categories = [...new Set((data ?? []).map((r) => r.category as string))];
+  const boxes = await listRippedBoxes();
 
   return (
     <div>
@@ -16,7 +18,7 @@ export default async function NewItemPage() {
       </Link>
       <h1 className="mt-2 text-xl font-semibold">Add item</h1>
       <div className="mt-6">
-        <ItemForm categories={categories} />
+        <ItemForm categories={categories} boxes={boxes} />
       </div>
     </div>
   );

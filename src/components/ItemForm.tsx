@@ -1,10 +1,16 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { createItem, updateItem, type FormState } from "@/app/(app)/actions";
+import {
+  createItem,
+  updateItem,
+  type FormState,
+  type RippedBox,
+} from "@/app/(app)/actions";
 import {
   DEFAULT_CATEGORIES,
   GRADE_COMPANIES,
+  formatMoney,
   isCardCategory,
   type CardCondition,
   type Item,
@@ -23,9 +29,11 @@ const inputCls =
 export default function ItemForm({
   item,
   categories = [],
+  boxes = [],
 }: {
   item?: Item;
   categories?: string[];
+  boxes?: RippedBox[];
 }) {
   const [state, action, pending] = useActionState<FormState, FormData>(
     item ? updateItem : createItem,
@@ -34,6 +42,9 @@ export default function ItemForm({
   const [category, setCategory] = useState<string>(item?.category ?? "");
   const [condition, setCondition] = useState<CardCondition>(
     item?.condition ?? "raw"
+  );
+  const [rippedFrom, setRippedFrom] = useState<string>(
+    item?.ripped_from_id ?? ""
   );
   const [marketPlatform, setMarketPlatform] = useState<string>(
     item?.market_platform ?? ""
@@ -46,6 +57,13 @@ export default function ItemForm({
   const v = state?.values;
 
   const isCard = isCardCategory(category);
+  // When a card is pulled from a box, its cost is the box price split across
+  // everything pulled from that box — so the price field is derived, not typed.
+  const box = boxes.find((b) => b.id === rippedFrom) ?? null;
+  const shareCount = box
+    ? box.pulled + (item?.ripped_from_id === box.id ? 0 : 1)
+    : 0;
+  const share = box && shareCount > 0 ? box.purchase_price / shareCount : 0;
   // Live market link that reflects unsaved edits to platform/search/category.
   const marketPreview = item
     ? marketLink({
@@ -174,20 +192,64 @@ export default function ItemForm({
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <label className="block text-sm">
-          <span className="font-medium">Purchase price (total)</span>
-          <input
-            name="purchase_price"
-            type="number"
-            step="0.01"
-            min="0"
-            required
-            defaultValue={v?.purchase_price ?? item?.purchase_price}
-            placeholder="0.00"
+      {isCard && boxes.length > 0 && (
+        <label className="block max-w-md text-sm">
+          <span className="font-medium">Pulled from</span>
+          <select
+            name="ripped_from_id"
+            value={rippedFrom}
+            onChange={(e) => setRippedFrom(e.target.value)}
             className={inputCls}
-          />
+          >
+            <option value="">Not pulled from a box</option>
+            {boxes.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name} — {formatMoney(b.purchase_price)} · {b.pulled} pulled
+              </option>
+            ))}
+          </select>
+          <span className="mt-1 block text-xs text-zinc-500">
+            Pick the sealed box you ripped this out of and its cost is shared
+            across every card from that box.
+          </span>
         </label>
+      )}
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {box ? (
+          <label className="block text-sm">
+            <span className="font-medium">Purchase price (total)</span>
+            <div
+              className={`${inputCls} bg-zinc-100 text-zinc-500 dark:bg-zinc-900`}
+            >
+              {formatMoney(share)}
+            </div>
+            <input
+              type="hidden"
+              name="purchase_price"
+              value={share.toFixed(2)}
+            />
+            <span className="mt-1 block text-xs text-zinc-500">
+              {formatMoney(box.purchase_price)} ÷ {shareCount}{" "}
+              {shareCount === 1 ? "card" : "cards"}. Saved to the exact cent,
+              and every other card from this box is updated to match.
+            </span>
+          </label>
+        ) : (
+          <label className="block text-sm">
+            <span className="font-medium">Purchase price (total)</span>
+            <input
+              name="purchase_price"
+              type="number"
+              step="0.01"
+              min="0"
+              required
+              defaultValue={v?.purchase_price ?? item?.purchase_price}
+              placeholder="0.00"
+              className={inputCls}
+            />
+          </label>
+        )}
         <label className="block text-sm">
           <span className="font-medium">Est. value</span>
           <input

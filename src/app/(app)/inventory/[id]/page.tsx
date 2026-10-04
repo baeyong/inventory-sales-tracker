@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate, formatMoney, type Item } from "@/lib/types";
 import ItemForm from "@/components/ItemForm";
+import { listRippedBoxes } from "@/app/(app)/actions";
 import SellForm from "@/components/SellForm";
 import OpenedForm from "@/components/OpenedForm";
 import DeleteButton from "@/components/DeleteButton";
@@ -28,6 +29,7 @@ export default async function ItemPage({
   const categories = [
     ...new Set((catRows ?? []).map((r) => r.category as string)),
   ];
+  const boxes = await listRippedBoxes();
 
   return (
     <div className="space-y-10">
@@ -40,7 +42,7 @@ export default async function ItemPage({
         </Link>
         <h1 className="mt-2 text-xl font-semibold">Edit item</h1>
         <div className="mt-6">
-          <ItemForm item={item} categories={categories} />
+          <ItemForm item={item} categories={categories} boxes={boxes} />
         </div>
       </div>
 

@@ -10,6 +10,7 @@ import {
 import {
   DEFAULT_CATEGORIES,
   GRADE_COMPANIES,
+  formatDate,
   formatMoney,
   isCardCategory,
   type CardCondition,
@@ -204,13 +205,14 @@ export default function ItemForm({
             <option value="">Not pulled from a box</option>
             {boxes.map((b) => (
               <option key={b.id} value={b.id}>
-                {b.name} — {formatMoney(b.purchase_price)} · {b.pulled} pulled
+                {formatDate(b.opened_at)} · {b.name} ·{" "}
+                {formatMoney(b.purchase_price)} · {b.pulled} pulled
               </option>
             ))}
           </select>
           <span className="mt-1 block text-xs text-zinc-500">
-            Pick the sealed box you ripped this out of and its cost is shared
-            across every card from that box.
+            Pick the sealed box you ripped this out of — newest rips first —
+            and its cost is shared across every card from that box.
           </span>
         </label>
       )}

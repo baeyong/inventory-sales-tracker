@@ -3,7 +3,9 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 const inputCls =
-  "rounded-md border border-edge px-2 py-1.5 text-sm";
+  "rounded-full border-0 bg-surface py-2.5 pl-4 pr-8 text-xs font-medium text-ink-2 shadow-pill";
+const dateCls =
+  "rounded-full border-0 bg-surface px-3.5 py-2 text-xs font-medium text-ink-2 shadow-pill";
 
 export default function FilterBar({
   categories,
@@ -33,25 +35,25 @@ export default function FilterBar({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2 text-sm">
+    <div className="contents text-xs">
       {showDates && (
         <>
-          <label className="flex items-center gap-1 text-muted">
+          <label className="flex items-center gap-1.5 text-xs text-muted">
             From
             <input
               type="date"
               value={from}
               onChange={(e) => setParam("from", e.target.value)}
-              className={inputCls}
+              className={dateCls}
             />
           </label>
-          <label className="flex items-center gap-1 text-muted">
+          <label className="flex items-center gap-1.5 text-xs text-muted">
             To
             <input
               type="date"
               value={to}
               onChange={(e) => setParam("to", e.target.value)}
-              className={inputCls}
+              className={dateCls}
             />
           </label>
         </>
@@ -85,7 +87,7 @@ export default function FilterBar({
         <button
           type="button"
           onClick={() => router.replace(pathname)}
-          className="text-muted hover:underline"
+          className="text-[13px] text-ink-2 hover:underline"
         >
           Clear filters
         </button>

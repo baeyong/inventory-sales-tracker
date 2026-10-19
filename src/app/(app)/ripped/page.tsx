@@ -1,10 +1,10 @@
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { formatMoney, type Item } from "@/lib/types";
-import HoldingsTable from "@/components/HoldingsTable";
-import PageStats from "@/components/PageStats";
+import OpenedBoxes from "@/components/OpenedBoxes";
+import PageHero from "@/components/PageHero";
+import { HoldingsTabs } from "@/components/SectionTabs";
 
-export const metadata = { title: "For the Love of the Game · Resale Tracker" };
+export const metadata = { title: "Opened boxes · Resale Tracker" };
 
 export default async function RippedPage() {
   const supabase = await createClient();
@@ -13,43 +13,42 @@ export default async function RippedPage() {
     .select("*")
     .not("opened_at", "is", null)
     .order("opened_at", { ascending: false });
-  const items = (data ?? []) as Item[];
+  const boxes = (data ?? []) as Item[];
 
-  const totalCost = items.reduce((sum, i) => sum + Number(i.purchase_price), 0);
+  // Every card pulled from a box, wherever it is now — still held, sold, or
+  // moved to Investments or the Collection.
+  const { data: pullRows } = await supabase
+    .from("items")
+    .select("*")
+    .not("ripped_from_id", "is", null)
+    .order("name");
+  const pulls = (pullRows ?? []) as Item[];
+
+  const totalCost = boxes.reduce((sum, i) => sum + Number(i.purchase_price), 0);
 
   return (
-    <div>
-      <h1 className="text-xl font-semibold">🎴 For the Love of the Game</h1>
-      <p className="mt-1 text-sm text-muted">
-        Sealed product you&rsquo;ve ripped open — tracked at cost. Whatever you
-        pulled lives in{" "}
-        <Link href="/inventory" className="text-accent hover:underline">
-          Inventory
-        </Link>{" "}
-        as separate $0-cost items.
-      </p>
-      {items.length > 0 && (
-        <PageStats
-          stats={[
-            { label: "Opened", value: String(items.length) },
-            { label: "Cost in", value: formatMoney(totalCost) },
-          ]}
-        />
-      )}
-
-      {items.length === 0 ? (
-        <div className="mt-10 rounded-xl border border-dashed border-edge p-10 text-center text-sm text-muted">
-          Nothing opened yet. In{" "}
-          <Link href="/inventory" className="text-accent hover:underline">
-            Inventory
-          </Link>
-          , select a sealed item and hit <span className="font-medium">Rip open</span>.
-        </div>
-      ) : (
-        <div className="mt-6">
-          <HoldingsTable items={items} kind="opened" />
-        </div>
-      )}
+    <div className="flex flex-col gap-4">
+      <HoldingsTabs active="/ripped" />
+      <PageHero
+        title="Opened boxes"
+        description={
+          <>
+            Sealed product you ripped — <em>for the love of the game</em>. Each
+            box&rsquo;s cost is split evenly across the cards pulled from it, so
+            your card costs always add back up to what the box cost.
+          </>
+        }
+        stats={
+          boxes.length > 0
+            ? [
+                { label: "Boxes", value: String(boxes.length) },
+                { label: "Cost in", value: formatMoney(totalCost) },
+                { label: "Pulls", value: String(pulls.length) },
+              ]
+            : undefined
+        }
+      />
+      <OpenedBoxes boxes={boxes} pulls={pulls} />
     </div>
   );
 }

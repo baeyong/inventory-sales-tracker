@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { formatMoney, type Item } from "@/lib/types";
+import { categoryHue } from "@/lib/categoryHue";
+import { signedMoney } from "@/lib/ui";
 import ProfitChart, { type MonthPoint } from "@/components/ProfitChart";
 
 export const metadata = { title: "Dashboard · Resale Tracker" };
@@ -22,38 +24,6 @@ function lastTwelveMonths(): { key: string; label: string }[] {
     months.push({ key, label });
   }
   return months;
-}
-
-function StatTile({
-  label,
-  value,
-  sub,
-  tone,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-  tone?: "pos" | "neg";
-}) {
-  return (
-    <div className="rounded-xl border border-line bg-surface p-4">
-      <div className="text-xs font-medium uppercase tracking-wide text-muted">
-        {label}
-      </div>
-      <div
-        className={`mt-1 text-2xl font-semibold ${
-          tone === "pos"
-            ? "text-pos"
-            : tone === "neg"
-              ? "text-neg"
-              : ""
-        }`}
-      >
-        {value}
-      </div>
-      {sub && <div className="mt-0.5 text-xs text-muted">{sub}</div>}
-    </div>
-  );
 }
 
 export default async function DashboardPage() {
@@ -92,24 +62,6 @@ export default async function DashboardPage() {
 
   const invested = unsold.reduce((s, i) => s + Number(i.purchase_price), 0);
 
-  // Spell out what the inventory figure leaves out so it can't read as a total.
-  const setAside = [
-    holdings.length > 0 ? "investments" : null,
-    keepers.length > 0 ? "personal" : null,
-  ].filter(Boolean);
-  const investedSub =
-    setAside.length > 0
-      ? `${formatMoney(invested)} invested · excludes ${setAside.join(" & ")}`
-      : `${formatMoney(invested)} invested`;
-
-  // Four base tiles, plus one for each set-aside group that has anything in it.
-  const tileCount = 4 + setAside.length;
-  const tileCols =
-    tileCount === 6
-      ? "lg:grid-cols-3 xl:grid-cols-6"
-      : tileCount === 5
-        ? "lg:grid-cols-5"
-        : "lg:grid-cols-4";
   const revenue = soldKnown.reduce((s, i) => s + Number(i.sale_payout), 0);
   const profit = soldKnown.reduce(
     (s, i) => s + Number(i.sale_payout) - Number(i.purchase_price),
@@ -135,10 +87,6 @@ export default async function DashboardPage() {
     month: label,
     profit: Math.round((byMonth.get(key) ?? 0) * 100) / 100,
   }));
-
-  const recentSales = [...sold]
-    .sort((a, b) => (a.sale_date! < b.sale_date! ? 1 : -1))
-    .slice(0, 5);
 
   const byCategory = new Map<
     string,
@@ -171,162 +119,331 @@ export default async function DashboardPage() {
     (a, b) => b[1].catProfit - a[1].catProfit
   );
 
+  // What needs doing: sales still waiting on money or a parcel, and stock that
+  // isn't listed or valued yet.
+  const awaiting = sold.filter((i) => !i.payment_received);
+  const awaitingTotal = awaiting.reduce(
+    (s, i) => s + (i.sale_payout === null ? 0 : Number(i.sale_payout)),
+    0
+  );
+  const toShip = sold.filter((i) => !i.shipped).length;
+  const notListed = unsold.filter((i) => !i.listed).length;
+  const unvalued = unsold.filter((i) => i.est_value === null).length;
+  const listedCount = unsold.length - notListed;
+  const unsoldValued = unsold.filter((i) => i.est_value !== null);
+  const unsoldValue = unsoldValued.reduce((s, i) => s + Number(i.est_value), 0);
+  const missing = sold.length - soldKnown.length;
+
   return (
-    <div>
-      <h1 className="text-xl font-semibold">Dashboard</h1>
+    <div className="flex flex-col gap-4">
+      <h1 className="sr-only">Dashboard</h1>
 
-      <div
-        className={`mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 ${tileCols}`}
-      >
-        <StatTile
-          label="In inventory"
-          value={String(unsold.length)}
-          sub={investedSub}
-        />
-        {holdings.length > 0 && (
-          <StatTile
-            label="Investments"
-            value={String(holdings.length)}
-            sub={
-              holdingValued.length > 0
-                ? `${formatMoney(holdingCost)} cost · ${formatMoney(holdingValue)} est. value`
-                : `${formatMoney(holdingCost)} cost`
-            }
-          />
-        )}
-        {keepers.length > 0 && (
-          <StatTile
-            label="Personal collection"
-            value={String(keepers.length)}
-            sub={
-              keeperValued.length > 0
-                ? `${formatMoney(keeperCost)} cost · ${formatMoney(keeperValue)} est. value`
-                : `${formatMoney(keeperCost)} cost`
-            }
-          />
-        )}
-        <StatTile
-          label="Total sales"
-          value={String(sold.length)}
-          sub={`${formatMoney(revenue)} received`}
-        />
-        <StatTile
-          label="Realized profit"
-          value={formatMoney(profit)}
-          tone={profit >= 0 ? "pos" : "neg"}
-          sub={
-            sold.length > soldKnown.length
-              ? `${sold.length - soldKnown.length} sale${sold.length - soldKnown.length === 1 ? "" : "s"} missing a payout not counted`
-              : "All time, net of cost"
-          }
-        />
-        <StatTile
-          label="This month"
-          value={formatMoney(profitThisMonth)}
-          tone={profitThisMonth >= 0 ? "pos" : "neg"}
-          sub="Profit on items sold this month"
-        />
-      </div>
-
-      <div className="mt-6 rounded-xl border border-line bg-surface p-4">
-        <h2 className="font-semibold">Monthly profit</h2>
-        <p className="mb-4 text-xs text-muted">
-          Net profit on items sold each month, last 12 months
-        </p>
-        {sold.length === 0 ? (
-          <p className="py-12 text-center text-sm text-muted">
-            No sales recorded yet — profits will show up here.
-          </p>
-        ) : (
-          <ProfitChart data={chartData} />
-        )}
-      </div>
-
-      {categoryRows.length > 0 && (
-        <div className="mt-6 rounded-xl border border-line bg-surface p-4">
-          <h2 className="font-semibold">By category</h2>
-          <div className="mt-3 overflow-x-auto">
-            <table className="w-full min-w-[560px] text-sm">
-              <thead className="text-left text-xs uppercase tracking-wide text-muted">
-                <tr>
-                  <th className="py-2 pr-4">Category</th>
-                  <th className="py-2 pr-4 text-right">In stock</th>
-                  <th className="py-2 pr-4 text-right">Invested</th>
-                  <th className="py-2 pr-4 text-right">Sold</th>
-                  <th className="py-2 pr-4 text-right">Revenue</th>
-                  <th className="py-2 text-right">Profit</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-line">
-                {categoryRows.map(([cat, r]) => (
-                  <tr key={cat}>
-                    <td className="py-2 pr-4 font-medium">{cat}</td>
-                    <td className="py-2 pr-4 text-right">{r.inStock}</td>
-                    <td className="py-2 pr-4 text-right">
-                      {formatMoney(r.invested)}
-                    </td>
-                    <td className="py-2 pr-4 text-right">{r.soldCount}</td>
-                    <td className="py-2 pr-4 text-right">
-                      {formatMoney(r.revenue)}
-                    </td>
-                    <td
-                      className={`py-2 text-right font-medium ${
-                        r.catProfit >= 0
-                          ? "text-pos"
-                          : "text-neg"
-                      }`}
-                    >
-                      {formatMoney(r.catProfit)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {/* Pale hero: the headline figure, white wells for the supporting ones */}
+      <section className="rounded-[22px] bg-panel p-5 sm:px-[30px] sm:py-7">
+        <div className="flex flex-wrap items-end gap-4 sm:gap-7">
+          <div className="min-w-0">
+            <div className="text-xs font-semibold tracking-[0.04em] text-panel-ink">
+              Realized profit
+            </div>
+            <div
+              className={`disp tnum mt-1.5 text-[40px] font-bold leading-[1.02] sm:text-[54px] ${
+                profit >= 0 ? "text-panel-strong" : "text-neg"
+              }`}
+            >
+              {signedMoney(profit)}
+            </div>
+            <div className="mt-2 text-[13px] text-panel-ink">
+              All time, net of cost
+              {missing > 0 &&
+                ` · ${missing} sale${missing === 1 ? "" : "s"} missing a payout aren’t counted`}
+            </div>
           </div>
+          <span className="hidden grow sm:block" />
+          <dl className="flex w-full gap-2 sm:w-auto sm:gap-2.5">
+            <HeroWell
+              label="This month"
+              value={signedMoney(profitThisMonth)}
+              tone={profitThisMonth >= 0 ? "text-pos" : "text-neg"}
+            />
+            <HeroWell label="Received" value={formatMoney(revenue)} />
+            <HeroWell label="Sales" value={String(sold.length)} />
+          </dl>
         </div>
-      )}
+      </section>
 
-      {recentSales.length > 0 && (
-        <div className="mt-6 rounded-xl border border-line bg-surface p-4">
-          <div className="flex items-center justify-between">
-            <h2 className="font-semibold">Recent sales</h2>
-            <Link href="/sales" className="text-sm text-accent hover:underline">
-              View all
-            </Link>
+      {/* What you own */}
+      <section>
+        <h2 className="cap mb-2.5">What you own</h2>
+        <div className="grid grid-cols-1 gap-3.5 md:grid-cols-3">
+          <OwnCard
+            href="/inventory"
+            name="Inventory"
+            count={unsold.length}
+            dot="bg-accent"
+            badge="bg-soft text-on-soft"
+            cost={invested}
+            worth={unsoldValued.length > 0 ? unsoldValue : null}
+          >
+            {unsold.length > 0 && (
+              <>
+                <div className="mt-3.5 h-[5px] overflow-hidden rounded-[3px] bg-soft">
+                  <div
+                    className="h-full bg-accent"
+                    style={{ width: `${(listedCount / unsold.length) * 100}%` }}
+                  />
+                </div>
+                <div className="cap mt-[7px]">
+                  {listedCount} listed · {notListed} to go
+                </div>
+              </>
+            )}
+          </OwnCard>
+          <OwnCard
+            href="/investments"
+            name="Investments"
+            count={holdings.length}
+            dot="bg-hold"
+            badge="bg-hold-surface text-hold"
+            cost={holdingCost}
+            worth={holdingValued.length > 0 ? holdingValue : null}
+          >
+            {holdingValued.length > 0 && (
+              <PotentialLine
+                value={
+                  holdingValue -
+                  holdingValued.reduce((s, i) => s + Number(i.purchase_price), 0)
+                }
+              />
+            )}
+          </OwnCard>
+          <OwnCard
+            href="/collection"
+            name="Collection"
+            count={keepers.length}
+            dot="bg-keep"
+            badge="bg-keep-surface text-keep"
+            cost={keeperCost}
+            worth={keeperValued.length > 0 ? keeperValue : null}
+          >
+            <div className="mt-4 inline-block rounded-[9px] bg-inset px-[11px] py-2 text-xs text-muted">
+              Kept out of business totals
+            </div>
+          </OwnCard>
+        </div>
+      </section>
+
+      {/* Needs attention */}
+      <section className="card px-[22px] py-[18px]">
+        <div className="flex flex-wrap items-center gap-x-[18px] gap-y-3">
+          <h2 className="text-sm font-semibold">Needs attention</h2>
+          {awaiting.length + toShip + notListed + unvalued === 0 ? (
+            <span className="text-[13px] text-muted">
+              All caught up — nothing waiting.
+            </span>
+          ) : (
+            <div className="flex flex-wrap gap-[9px]">
+              {awaiting.length > 0 && (
+                <Chip href="/pending" warn>
+                  <span className="tnum">{awaiting.length}</span> awaiting payment
+                  {awaitingTotal > 0 && (
+                    <>
+                      {" · "}
+                      <span className="tnum">{formatMoney(awaitingTotal)}</span>
+                    </>
+                  )}
+                </Chip>
+              )}
+              {toShip > 0 && (
+                <Chip href="/pending" warn>
+                  <span className="tnum">{toShip}</span> to ship
+                </Chip>
+              )}
+              {notListed > 0 && (
+                <Chip href="/inventory?listed=no">
+                  <span className="tnum">{notListed}</span> not listed
+                </Chip>
+              )}
+              {unvalued > 0 && (
+                <Chip href="/inventory">
+                  <span className="tnum">{unvalued}</span> unvalued
+                </Chip>
+              )}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Chart + categories */}
+      <div className="flex flex-wrap gap-3.5">
+        <section className="card min-w-0 grow-[999] basis-[560px] px-6 py-[22px]">
+          <div className="flex items-baseline justify-between gap-4">
+            <h2 className="disp text-[15px] font-bold">Monthly profit</h2>
+            <span className="cap">Last 12 months</span>
           </div>
-          <ul className="mt-3 divide-y divide-line text-sm">
-            {recentSales.map((i) => {
-              const p =
-                i.sale_payout === null
-                  ? null
-                  : Number(i.sale_payout) - Number(i.purchase_price);
-              return (
+          <div className="mt-5">
+            {sold.length === 0 ? (
+              <p className="py-12 text-center text-sm text-muted">
+                No sales recorded yet — profits will show up here.
+              </p>
+            ) : (
+              <ProfitChart data={chartData} />
+            )}
+          </div>
+        </section>
+
+        <section className="card min-w-0 grow basis-[340px] px-6 py-[22px]">
+          <h2 className="disp mb-3.5 text-[15px] font-bold">By category</h2>
+          {categoryRows.length === 0 ? (
+            <p className="text-sm text-muted">Nothing recorded yet.</p>
+          ) : (
+            <ul className="flex flex-col gap-[9px]">
+              {categoryRows.map(([cat, r]) => (
                 <li
-                  key={i.id}
-                  className="flex items-center justify-between gap-4 py-2"
+                  key={cat}
+                  className="flex items-center gap-3 rounded-[13px] bg-inset px-3.5 py-[11px]"
                 >
-                  <span className="min-w-0 truncate">{i.name}</span>
-                  <span className="shrink-0 text-muted">
-                    {i.sale_platform ?? "—"}
-                  </span>
                   <span
-                    className={`shrink-0 font-medium ${
-                      p === null
+                    className="h-7 w-2 shrink-0 rounded"
+                    style={{ background: categoryHue(cat) }}
+                  />
+                  <div className="min-w-0 grow">
+                    <div className="truncate text-[13px] font-semibold">{cat}</div>
+                    <div className="cap mt-px">
+                      <span className="tnum">{r.soldCount}</span> sold
+                      {r.inStock > 0 && (
+                        <>
+                          {" · "}
+                          <span className="tnum">{r.inStock}</span> in stock
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <span
+                    className={`disp tnum text-[15px] font-bold ${
+                      r.soldCount === 0
                         ? "text-muted"
-                        : p >= 0
+                        : r.catProfit >= 0
                           ? "text-pos"
                           : "text-neg"
                     }`}
                   >
-                    {p === null ? "—" : formatMoney(p)}
+                    {r.soldCount === 0 ? "—" : signedMoney(r.catProfit)}
                   </span>
                 </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
-
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
     </div>
+  );
+}
+
+function HeroWell({
+  label,
+  value,
+  tone = "",
+}: {
+  label: string;
+  value: string;
+  tone?: string;
+}) {
+  return (
+    <div className="min-w-0 flex-1 rounded-xl bg-surface px-3 py-[11px] sm:min-w-[124px] sm:flex-none sm:rounded-[14px] sm:px-[18px] sm:py-3.5">
+      <dt className="cap">{label}</dt>
+      <dd className={`disp tnum mt-[3px] text-[17px] font-bold sm:text-[22px] ${tone}`}>
+        {value}
+      </dd>
+    </div>
+  );
+}
+
+function OwnCard({
+  href,
+  name,
+  count,
+  dot,
+  badge,
+  cost,
+  worth,
+  children,
+}: {
+  href: string;
+  name: string;
+  count: number;
+  dot: string;
+  badge: string;
+  cost: number;
+  worth: number | null;
+  children?: React.ReactNode;
+}) {
+  return (
+    <Link href={href} className="card block px-[22px] py-5 hover:bg-inset">
+      <div className="flex items-center gap-[9px]">
+        <span className={`h-[9px] w-[9px] rounded-[3px] ${dot}`} />
+        <span className="text-sm font-semibold">{name}</span>
+        <span className="grow" />
+        <span
+          className={`tnum rounded-full px-[9px] py-[3px] text-[11px] font-semibold ${badge}`}
+        >
+          {count}
+        </span>
+      </div>
+      <div className="disp tnum mt-3 text-[30px] font-bold">{formatMoney(cost)}</div>
+      <div className="cap mt-[3px]">
+        {worth === null ? (
+          "cost · not valued yet"
+        ) : (
+          <>
+            worth{" "}
+            <span className="tnum font-semibold text-ink">{formatMoney(worth)}</span>
+          </>
+        )}
+      </div>
+      {children}
+    </Link>
+  );
+}
+
+function PotentialLine({ value }: { value: number }) {
+  const up = value >= 0;
+  return (
+    <div
+      className={`mt-4 inline-flex items-center gap-1.5 text-[13px] font-bold ${
+        up ? "text-pos" : "text-neg"
+      }`}
+    >
+      <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+        <path
+          d={up ? "M6 10 L6 2 M2.5 5.5 L6 2 L9.5 5.5" : "M6 2 L6 10 M2.5 6.5 L6 10 L9.5 6.5"}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          strokeLinecap="round"
+        />
+      </svg>
+      <span className="tnum">{signedMoney(value)} potential</span>
+    </div>
+  );
+}
+
+function Chip({
+  href,
+  warn = false,
+  children,
+}: {
+  href: string;
+  warn?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className={`rounded-xl px-[13px] py-[9px] text-xs font-semibold hover:underline ${
+        warn ? "bg-warn-surface text-warn" : "bg-inset text-ink-2"
+      }`}
+    >
+      {children}
+    </Link>
   );
 }

@@ -17,7 +17,7 @@ export default async function AppLayout({
   return (
     <div className="flex min-h-screen flex-col">
       <AppHeader email={user.email ?? ""} />
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
+      <main className="mx-auto w-full max-w-[1264px] flex-1 px-4 pb-9 pt-2 sm:px-8">
         {children}
       </main>
     </div>

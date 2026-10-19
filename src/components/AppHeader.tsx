@@ -1,38 +1,53 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "@/app/(auth)/actions";
 import ThemeToggle from "@/components/ThemeToggle";
 
-const LINKS = [
+type NavLink = { href: string; label: string };
+type NavEntry = NavLink | { label: string; items: NavLink[] };
+
+// Five top-level entries; the holding areas and the sales views sit under a
+// menu each, with their own tabs on the page itself.
+const NAV: NavEntry[] = [
   { href: "/dashboard", label: "Dashboard" },
-  { href: "/inventory", label: "Inventory" },
-  { href: "/investments", label: "Investments" },
-  { href: "/collection", label: "Collection" },
-  { href: "/sales", label: "Sales" },
-  { href: "/pending", label: "Pending" },
-  { href: "/ripped", label: "For the Love of the Game" },
+  {
+    label: "Holdings",
+    items: [
+      { href: "/inventory", label: "Inventory" },
+      { href: "/investments", label: "Investments" },
+      { href: "/collection", label: "Collection" },
+      { href: "/ripped", label: "Opened" },
+    ],
+  },
+  {
+    label: "Sales",
+    items: [
+      { href: "/sales", label: "All sales" },
+      { href: "/pending", label: "Pending" },
+    ],
+  },
   { href: "/expenses", label: "Expenses" },
   { href: "/data", label: "Data" },
 ];
 
-function linkClass(active: boolean) {
-  return `whitespace-nowrap rounded-full px-3 py-2 text-sm font-medium ${
-    active
-      ? "bg-accent text-on-accent"
-      : "text-muted hover:bg-inset hover:text-ink"
-  }`;
+function Chevron() {
+  return (
+    <svg width="9" height="9" viewBox="0 0 10 10" aria-hidden="true">
+      <path
+        d="M1 3.5 L5 7 L9 3.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
 }
 
-function mobileLinkClass(active: boolean) {
-  return `rounded-xl px-3 py-2.5 text-sm font-medium ${
-    active ? "bg-panel text-accent" : "text-muted hover:bg-inset"
-  }`;
-}
-
-/** Package glyph from the redesign mock, in place of the old emoji. */
+/** Package glyph from the redesign mock. */
 function Logo() {
   return (
     <span
@@ -52,101 +67,210 @@ function Logo() {
   );
 }
 
-const pillButton =
-  "rounded-full bg-surface px-3.5 py-2 text-sm font-medium text-ink shadow-sm hover:bg-inset";
+const pill = (active: boolean) =>
+  `inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-[13px] py-2 text-xs ${
+    active
+      ? "bg-accent font-semibold text-on-accent"
+      : "font-medium text-ink-2 hover:bg-inset"
+  }`;
+
+const signOutCls =
+  "rounded-full bg-surface px-3.5 py-[9px] text-xs font-medium text-ink shadow-pill hover:bg-inset";
+
+/** A top-level pill that opens a small menu of the pages under it. */
+function NavMenu({
+  label,
+  items,
+  active,
+  isActive,
+}: {
+  label: string;
+  items: NavLink[];
+  active: boolean;
+  isActive: (href: string) => boolean;
+}) {
+  const pathname = usePathname();
+  // Remember which page the menu was opened on, so moving to another page
+  // closes it without an effect.
+  const [openOn, setOpenOn] = useState<string | null>(null);
+  const open = openOn === pathname;
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onDown(e: MouseEvent) {
+      if (!ref.current?.contains(e.target as Node)) setOpenOn(null);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpenOn(null);
+    }
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpenOn(open ? null : pathname)}
+        className={pill(active)}
+      >
+        {label}
+        <Chevron />
+      </button>
+      {open && (
+        <ul className="card absolute left-0 top-full z-40 mt-2 min-w-44 p-1.5">
+          {items.map((l) => (
+            <li key={l.href}>
+              <Link
+                href={l.href}
+                aria-current={isActive(l.href) ? "page" : undefined}
+                className={`block rounded-xl px-3 py-2 text-[13px] ${
+                  isActive(l.href)
+                    ? "bg-soft font-semibold text-on-soft"
+                    : "text-ink-2 hover:bg-inset"
+                }`}
+              >
+                {l.label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 export default function AppHeader({ email }: { email: string }) {
   const pathname = usePathname();
-  const [open, setOpen] = useState(false);
-
-  // Close the mobile menu whenever the route changes.
-  useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
+  const [menuOn, setMenuOn] = useState<string | null>(null);
+  const menuOpen = menuOn === pathname;
 
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(href + "/");
 
   return (
-    <header>
-      <div className="mx-auto max-w-6xl px-4">
-        <div className="flex items-center gap-3 py-4">
-          <Link href="/dashboard" className="flex items-center gap-2.5">
-            <Logo />
-            <span className="font-display text-[17px] font-bold tracking-tight">
-              Resale Tracker
-            </span>
-          </Link>
+    <header className="px-4 sm:px-8">
+      <div className="flex items-center gap-3.5 py-4">
+        <Link href="/dashboard" className="flex items-center gap-3.5">
+          <Logo />
+          <span className="disp text-[17px] font-bold">Resale Tracker</span>
+        </Link>
 
-          {/* Desktop nav. Nine links only fit on one line at xl; below that
-              the hamburger takes over rather than letting the row wrap. */}
-          <nav
-            aria-label="Sections"
-            className="ml-2 hidden items-center gap-1 rounded-full bg-surface p-1 shadow-sm xl:flex"
-          >
-            {LINKS.map(({ href, label }) => (
+        <nav
+          aria-label="Sections"
+          className="ml-2.5 hidden items-center gap-1 rounded-full bg-surface p-1 lg:flex"
+        >
+          {NAV.map((entry) =>
+            "items" in entry ? (
+              <NavMenu
+                key={entry.label}
+                label={entry.label}
+                items={entry.items}
+                active={entry.items.some((l) => isActive(l.href))}
+                isActive={isActive}
+              />
+            ) : (
               <Link
-                key={href}
-                href={href}
-                aria-current={isActive(href) ? "page" : undefined}
-                className={linkClass(isActive(href))}
+                key={entry.href}
+                href={entry.href}
+                aria-current={isActive(entry.href) ? "page" : undefined}
+                className={pill(isActive(entry.href))}
               >
-                {label}
+                {entry.label}
               </Link>
-            ))}
-          </nav>
+            )
+          )}
+        </nav>
 
-          <div className="ml-auto flex items-center gap-2">
-            <span className="hidden truncate text-xs text-muted 2xl:inline">
-              {email}
-            </span>
-            <ThemeToggle />
-            <form action={signOut} className="hidden xl:block">
-              <button type="submit" className={pillButton}>
+        <span className="grow" />
+        <span className="hidden truncate text-xs text-muted xl:inline">
+          {email}
+        </span>
+        <ThemeToggle />
+        <form action={signOut} className="hidden lg:block">
+          <button type="submit" className={signOutCls}>
+            Sign out
+          </button>
+        </form>
+
+        <button
+          type="button"
+          onClick={() => setMenuOn(menuOpen ? null : pathname)}
+          aria-label={menuOpen ? "Close menu" : "Open menu"}
+          aria-expanded={menuOpen}
+          className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-surface text-ink shadow-pill hover:bg-inset lg:hidden"
+        >
+          <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+            {menuOpen ? (
+              <path
+                d="M4 4 L14 14 M14 4 L4 14"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+              />
+            ) : (
+              <path
+                d="M2 5 H16 M2 9 H16 M2 13 H16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+              />
+            )}
+          </svg>
+        </button>
+      </div>
+
+      {/* Phone / narrow menu: every page, grouped as on desktop. */}
+      {menuOpen && (
+        <nav aria-label="Sections" className="card mb-3 p-2 lg:hidden">
+          {NAV.map((entry) =>
+            "items" in entry ? (
+              <div key={entry.label} className="mt-1">
+                <div className="cap px-3 pb-1 pt-2">{entry.label}</div>
+                {entry.items.map((l) => (
+                  <MobileLink key={l.href} link={l} active={isActive(l.href)} />
+                ))}
+              </div>
+            ) : (
+              <MobileLink
+                key={entry.href}
+                link={entry}
+                active={isActive(entry.href)}
+              />
+            )
+          )}
+          <div className="mt-2 flex items-center justify-between gap-3 border-t border-line px-2 pt-3">
+            <span className="truncate text-sm text-muted">{email}</span>
+            <form action={signOut}>
+              <button type="submit" className={signOutCls}>
                 Sign out
               </button>
             </form>
-
-            {/* Mobile menu toggle */}
-            <button
-              type="button"
-              onClick={() => setOpen((o) => !o)}
-              aria-label={open ? "Close menu" : "Open menu"}
-              aria-expanded={open}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-surface text-muted shadow-sm hover:bg-inset xl:hidden"
-            >
-              <span className="text-lg leading-none">{open ? "✕" : "☰"}</span>
-            </button>
           </div>
-        </div>
-
-        {/* Mobile menu panel */}
-        {open && (
-          <nav
-            aria-label="Sections"
-            className="mb-3 flex flex-col gap-1 rounded-2xl bg-surface p-2 shadow-sm xl:hidden"
-          >
-            {LINKS.map(({ href, label }) => (
-              <Link
-                key={href}
-                href={href}
-                aria-current={isActive(href) ? "page" : undefined}
-                className={mobileLinkClass(isActive(href))}
-              >
-                {label}
-              </Link>
-            ))}
-            <div className="mt-1 flex items-center justify-between gap-3 border-t border-line px-1 pt-3">
-              <span className="truncate text-sm text-muted">{email}</span>
-              <form action={signOut}>
-                <button type="submit" className={pillButton}>
-                  Sign out
-                </button>
-              </form>
-            </div>
-          </nav>
-        )}
-      </div>
+        </nav>
+      )}
     </header>
+  );
+}
+
+function MobileLink({ link, active }: { link: NavLink; active: boolean }) {
+  return (
+    <Link
+      href={link.href}
+      aria-current={active ? "page" : undefined}
+      className={`block rounded-xl px-3 py-2.5 text-sm ${
+        active ? "bg-soft font-semibold text-on-soft" : "text-ink-2 hover:bg-inset"
+      }`}
+    >
+      {link.label}
+    </Link>
   );
 }

@@ -3,7 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { formatMoney, type Item } from "@/lib/types";
 import InventoryTable from "@/components/InventoryTable";
 import FilterBar from "@/components/FilterBar";
-import PageStats from "@/components/PageStats";
+import PageHero from "@/components/PageHero";
+import { HoldingsTabs } from "@/components/SectionTabs";
+import { btnPrimary, signedMoney } from "@/lib/ui";
 
 export const metadata = { title: "Inventory · Resale Tracker" };
 
@@ -52,56 +54,49 @@ export default async function InventoryPage({
     0
   );
 
+  const notListed = items.filter((i) => !i.listed).length;
+
   return (
-    <div>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold">Inventory</h1>
-          <PageStats
-            stats={[
-              {
-                label: items.length === 1 ? "Unsold item" : "Unsold items",
-                value: String(items.length),
-              },
-              { label: "Invested", value: formatMoney(totalCost) },
-              ...(valued.length > 0
-                ? ([
-                    { label: "Est. value", value: formatMoney(totalValue) },
-                    {
-                      label: "Potential",
-                      value: formatMoney(potential),
-                      tone: potential >= 0 ? "pos" : "neg",
-                    },
-                  ] as const)
-                : []),
-            ]}
-          />
-          {items.some((i) => !i.listed) && (
-            <p className="mt-2 text-sm font-medium">
-              <Link
-                href="/inventory?listed=no"
-                className="text-amber-700 hover:underline dark:text-amber-400"
-              >
-                {items.filter((i) => !i.listed).length} not listed yet →
-              </Link>
-            </p>
-          )}
-        </div>
-        <Link
-          href="/inventory/new"
-          className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent/90"
-        >
-          + Add item
-        </Link>
-      </div>
+    <div className="flex flex-col gap-4">
+      <HoldingsTabs active="/inventory" />
 
-      <div className="mt-3">
-        <FilterBar categories={categories} showListed />
-      </div>
+      <PageHero
+        title="Inventory"
+        description="Items held for sale. Opened boxes, long-term holdings and keepers live in the other tabs."
+        stats={[
+          { label: "Invested", value: formatMoney(totalCost) },
+          ...(valued.length > 0
+            ? ([
+                { label: "Est. value", value: formatMoney(totalValue) },
+                {
+                  label: "Potential",
+                  value: signedMoney(potential),
+                  tone: potential >= 0 ? "pos" : "neg",
+                },
+              ] as const)
+            : []),
+        ]}
+      >
+        {notListed > 0 && listed === null && (
+          <Link
+            href="/inventory?listed=no"
+            className="mt-2 inline-block text-[13px] font-semibold text-warn hover:underline"
+          >
+            {notListed} not listed yet →
+          </Link>
+        )}
+      </PageHero>
 
-      {items.length === 0 ? (
-        <div className="mt-10 rounded-xl border border-dashed border-edge p-10 text-center text-sm text-muted">
-          {category || listed !== null ? (
+      <InventoryTable
+        items={items}
+        toolbar={<FilterBar categories={categories} showListed />}
+        action={
+          <Link href="/inventory/new" className={btnPrimary}>
+            Add item
+          </Link>
+        }
+        empty={
+          category || listed !== null ? (
             "No inventory matches these filters."
           ) : (
             <>
@@ -111,13 +106,9 @@ export default async function InventoryPage({
               </Link>
               .
             </>
-          )}
-        </div>
-      ) : (
-        <div className="mt-6">
-          <InventoryTable items={items} />
-        </div>
-      )}
+          )
+        }
+      />
     </div>
   );
 }

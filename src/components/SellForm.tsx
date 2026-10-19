@@ -3,9 +3,9 @@
 import { useActionState } from "react";
 import { markSold, type FormState } from "@/app/(app)/actions";
 import { PLATFORM_SUGGESTIONS } from "@/lib/types";
+import { btnPrimary, field, fieldHint, fieldLabel } from "@/lib/ui";
 
-const inputCls =
-  "mt-1 w-full rounded-md border border-edge px-3 py-2 text-sm";
+const inputCls = field;
 
 export default function SellForm({
   itemId,
@@ -32,8 +32,8 @@ export default function SellForm({
     <form action={action} className="space-y-4">
       <input type="hidden" name="id" value={itemId} />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <label className="block text-sm">
-          <span className="font-medium">Sale date</span>
+        <label className="block">
+          <span className={fieldLabel}>Sale date</span>
           <input
             name="sale_date"
             type="date"
@@ -41,12 +41,12 @@ export default function SellForm({
             defaultValue={v?.sale_date ?? defaultDate ?? new Date().toISOString().slice(0, 10)}
             className={inputCls}
           />
-          <span className="mt-1 block text-xs text-muted">
+          <span className={fieldHint}>
             Defaults to today — click to pick the real date.
           </span>
         </label>
-        <label className="block text-sm">
-          <span className="font-medium">Platform</span>
+        <label className="block">
+          <span className={fieldLabel}>Platform</span>
           <input
             name="sale_platform"
             required
@@ -61,8 +61,8 @@ export default function SellForm({
             ))}
           </datalist>
         </label>
-        <label className="block text-sm">
-          <span className="font-medium">Net payout</span>
+        <label className="block">
+          <span className={fieldLabel}>Net payout</span>
           <input
             name="sale_payout"
             type="number"
@@ -74,8 +74,8 @@ export default function SellForm({
           />
         </label>
       </div>
-      <label className="block text-sm">
-        <span className="font-medium">Buyer (name / username)</span>
+      <label className="block">
+        <span className={fieldLabel}>Buyer (name / username)</span>
         <input
           name="buyer"
           defaultValue={v?.buyer ?? defaultBuyer ?? ""}
@@ -89,7 +89,7 @@ export default function SellForm({
       <button
         type="submit"
         disabled={pending}
-        className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+        className={btnPrimary}
       >
         {pending ? "Saving…" : submitLabel}
       </button>

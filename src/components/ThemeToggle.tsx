@@ -44,7 +44,7 @@ export default function ThemeToggle() {
       }
       aria-pressed={ready ? dark : undefined}
       title={ready ? (dark ? "Light mode" : "Dark mode") : undefined}
-      className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-surface text-muted shadow-sm hover:bg-inset hover:text-ink"
+      className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-surface text-ink-2 shadow-pill hover:bg-inset hover:text-ink"
     >
       {ready && dark ? (
         // Sun: clicking goes back to light.

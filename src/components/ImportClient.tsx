@@ -268,7 +268,7 @@ export default function ImportClient() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
-        <label className="cursor-pointer rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent/90">
+        <label className="cursor-pointer inline-flex items-center justify-center gap-2 rounded-full bg-accent px-[18px] py-3 text-[13px] font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50">
           {parsed ? "Choose a different file" : "Choose file"}
           <input
             type="file"
@@ -283,7 +283,7 @@ export default function ImportClient() {
         <button
           type="button"
           onClick={downloadTemplate}
-          className="rounded-md border border-edge px-4 py-2 text-sm text-muted hover:bg-inset"
+          className="inline-flex items-center justify-center gap-2 rounded-full bg-surface px-4 py-2.5 text-[13px] font-medium text-ink shadow-pill hover:bg-inset disabled:opacity-50"
         >
           Download template
         </button>
@@ -300,7 +300,7 @@ export default function ImportClient() {
 
       {parsed && stage === "chat" && questions[qIdx] && (
         <div className="max-w-2xl space-y-3">
-          <div className="rounded-xl border border-line bg-surface p-4">
+          <div className="card p-4">
             <p className="text-sm text-muted">
               I matched{" "}
               {parsed.headers.length - questions.length} of{" "}
@@ -310,16 +310,16 @@ export default function ImportClient() {
 
             {chatLog.map((entry, i) => (
               <div key={i} className="mt-3 space-y-2">
-                <div className="max-w-[85%] rounded-lg rounded-bl-none bg-inset px-3 py-2 text-sm">
+                <div className="max-w-[85%] rounded-2xl rounded-bl-md bg-inset px-3 py-2 text-sm">
                   {entry.question}
                 </div>
-                <div className="ml-auto w-fit max-w-[85%] rounded-lg rounded-br-none bg-accent px-3 py-2 text-sm text-on-accent">
+                <div className="ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-md bg-accent px-3 py-2 text-sm text-on-accent">
                   {entry.answer}
                 </div>
               </div>
             ))}
 
-            <div className="mt-3 max-w-[85%] rounded-lg rounded-bl-none bg-inset px-3 py-2 text-sm">
+            <div className="mt-3 max-w-[85%] rounded-2xl rounded-bl-md bg-inset px-3 py-2 text-sm">
               <p>{questions[qIdx].question}</p>
               {parsed.samples[questions[qIdx].colIdx].length > 0 && (
                 <p className="mt-1 text-xs text-muted">
@@ -337,7 +337,7 @@ export default function ImportClient() {
                   key={opt.label}
                   type="button"
                   onClick={() => answerQuestion(opt)}
-                  className="rounded-full border border-accent px-4 py-1.5 text-sm font-medium text-accent hover:bg-accent hover:text-white"
+                  className="rounded-full bg-surface px-4 py-2 text-[13px] font-semibold text-accent shadow-pill hover:bg-soft"
                 >
                   {opt.label}
                 </button>
@@ -358,7 +358,7 @@ export default function ImportClient() {
       {parsed && stage === "map" && (
         <div className="space-y-4">
           <div>
-            <h2 className="font-semibold">Match your columns</h2>
+            <h2 className="disp text-[15px] font-bold">Match your columns</h2>
             <p className="mt-1 text-sm text-muted">
               We guessed where each column belongs — fix anything that&apos;s
               wrong.{" "}
@@ -370,9 +370,9 @@ export default function ImportClient() {
             </p>
           </div>
 
-          <div className="overflow-x-auto rounded-xl border border-line">
+          <div className="card overflow-x-auto">
             <table className="w-full min-w-[560px] text-sm">
-              <thead className="bg-inset text-left text-xs uppercase tracking-wide text-muted">
+              <thead className="bg-inset text-left text-[11px] font-semibold tracking-[0.04em] text-muted">
                 <tr>
                   <th className="px-4 py-3">Your column</th>
                   <th className="px-4 py-3">Sample values</th>
@@ -381,7 +381,7 @@ export default function ImportClient() {
               </thead>
               <tbody className="divide-y divide-line">
                 {parsed.headers.map((h, i) => (
-                  <tr key={i} className="bg-surface">
+                  <tr key={i}>
                     <td className="px-4 py-2 font-medium">
                       {h || <span className="text-muted">(untitled)</span>}
                     </td>
@@ -392,7 +392,7 @@ export default function ImportClient() {
                       <select
                         value={mapping[i] ?? ""}
                         onChange={(e) => assign(i, e.target.value)}
-                        className={`w-full max-w-56 rounded-md border px-2 py-1.5 text-sm ${
+                        className={`w-full max-w-56 rounded-[10px] border bg-surface px-2.5 py-2 text-[13px] ${
                           mapping[i] !== null && confidence[i] === "low"
                             ? "border-amber-400 bg-amber-50 dark:border-amber-700 dark:bg-amber-950"
                             : "border-edge"
@@ -424,7 +424,7 @@ export default function ImportClient() {
             type="button"
             disabled={!hasName || !hasPrice}
             onClick={goToPreview}
-            className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent/90 disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-accent px-[18px] py-3 text-[13px] font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50"
           >
             Continue to preview
           </button>
@@ -434,7 +434,7 @@ export default function ImportClient() {
       {parsed && stage === "preview" && built && (
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <h2 className="font-semibold">Preview</h2>
+            <h2 className="disp text-[15px] font-bold">Preview</h2>
             <button
               type="button"
               onClick={() => setStage("map")}
@@ -455,7 +455,7 @@ export default function ImportClient() {
           </div>
 
           {built.statusSkipped > 0 && (
-            <div className="rounded-lg border border-line bg-inset p-4 text-sm text-muted">
+            <div className="rounded-[14px] bg-inset p-4 text-sm text-muted">
               {built.statusSkipped} row{built.statusSkipped === 1 ? "" : "s"}{" "}
               {built.statusSkipped === 1 ? "was" : "were"} skipped: returned
               items, or rows marked sold with no usable sale date.
@@ -463,7 +463,7 @@ export default function ImportClient() {
           )}
 
           {built.errors.length > 0 && (
-            <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
+            <div className="rounded-[14px] bg-warn-surface p-4 text-[13px] text-warn">
               <p className="font-medium">
                 {built.errors.length} row{built.errors.length === 1 ? "" : "s"}{" "}
                 will be skipped:
@@ -485,9 +485,9 @@ export default function ImportClient() {
             </p>
           ) : (
             <>
-              <div className="overflow-x-auto rounded-xl border border-line">
+              <div className="card overflow-x-auto">
                 <table className="w-full min-w-[640px] text-sm">
-                  <thead className="bg-inset text-left text-xs uppercase tracking-wide text-muted">
+                  <thead className="bg-inset text-left text-[11px] font-semibold tracking-[0.04em] text-muted">
                     <tr>
                       <th className="px-4 py-3">Item</th>
                       <th className="px-4 py-3">Type</th>
@@ -500,7 +500,7 @@ export default function ImportClient() {
                     {built.rows.slice(0, 20).map((r, i) => {
                       const d = dispositions?.[i];
                       return (
-                        <tr key={i} className="bg-surface">
+                        <tr key={i}>
                           <td className="px-4 py-2">{r.name}</td>
                           <td className="px-4 py-2">
                             {r.category}
@@ -563,7 +563,7 @@ export default function ImportClient() {
                 type="button"
                 onClick={submit}
                 disabled={pending}
-                className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent/90 disabled:opacity-50"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-accent px-[18px] py-3 text-[13px] font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50"
               >
                 {pending
                   ? "Importing…"

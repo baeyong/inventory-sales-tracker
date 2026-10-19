@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -24,8 +24,38 @@ import {
 import { matchesSearch } from "@/lib/search";
 import { sortItems, type SortDir, type SortKey } from "@/lib/sort";
 import { marketLink } from "@/lib/market";
+import { categoryHue } from "@/lib/categoryHue";
+import {
+  btnPrimary,
+  btnRow,
+  btnSecondary,
+  btnText,
+  emptyState,
+  field,
+  fieldLabel,
+  modalOverlay,
+  modalPanel,
+  td,
+  th,
+} from "@/lib/ui";
 import SortHeader from "@/components/SortHeader";
 import MobileSort from "@/components/MobileSort";
+import Menu, {
+  ChevronDown,
+  DotsIcon,
+  menuItem,
+  rowMenuButton,
+} from "@/components/Menu";
+import {
+  SearchCount,
+  SearchField,
+  SelectionDock,
+  ToolbarRow,
+  dockButton,
+  dockClear,
+  dockDivider,
+  dockPrimary,
+} from "@/components/Toolbar";
 
 function cardDetails(item: Item): string | null {
   if (!isCardCategory(item.category)) return null;
@@ -40,7 +70,31 @@ function cardDetails(item: Item): string | null {
   return parts.join(" · ") || null;
 }
 
-export default function InventoryTable({ items }: { items: Item[] }) {
+/** "Category · card details · Qty 2" under an item's name. */
+function detailLine(item: Item): string {
+  return [
+    item.category,
+    cardDetails(item),
+    item.quantity > 1 ? `Qty ${item.quantity}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+export default function InventoryTable({
+  items,
+  toolbar,
+  action,
+  empty,
+}: {
+  items: Item[];
+  /** Filters, shown beside the search box. */
+  toolbar?: ReactNode;
+  /** The page's main button, at the end of the toolbar. */
+  action?: ReactNode;
+  /** Shown in place of the table when there's nothing to list. */
+  empty?: ReactNode;
+}) {
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [category, setCategory] = useState("");
@@ -281,17 +335,17 @@ export default function InventoryTable({ items }: { items: Item[] }) {
   }
 
   return (
-    <div>
+    <div className="flex flex-col gap-4">
       {dirtyItems.length > 0 && (
-        <div className="sticky top-0 z-10 mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm dark:border-amber-900 dark:bg-amber-950/50">
-          <span className="font-medium text-amber-800 dark:text-amber-200">
+        <div className="sticky top-2 z-20 flex flex-wrap items-center gap-3 rounded-[18px] bg-warn-surface px-4 py-2.5 text-[13px] shadow-pill">
+          <span className="font-semibold text-warn">
             {dirtyItems.length} unsaved value{dirtyItems.length === 1 ? "" : "s"}
           </span>
           <button
             type="button"
             onClick={saveEdits}
             disabled={pending || invalidCount > 0}
-            className="rounded-md bg-accent px-3 py-1.5 font-medium text-on-accent hover:bg-accent/90 disabled:opacity-50"
+            className={btnPrimary + " !py-2"}
           >
             {pending ? "Saving…" : "Save changes"}
           </button>
@@ -299,7 +353,7 @@ export default function InventoryTable({ items }: { items: Item[] }) {
             type="button"
             onClick={() => setEdits({})}
             disabled={pending}
-            className="text-muted hover:underline disabled:opacity-50"
+            className={btnText}
           >
             Discard
           </button>
@@ -308,61 +362,247 @@ export default function InventoryTable({ items }: { items: Item[] }) {
               Fix {invalidCount} invalid value{invalidCount === 1 ? "" : "s"}
             </span>
           )}
-          {error && (
-            <span className="text-neg">{error}</span>
-          )}
+          {error && <span className="text-neg">{error}</span>}
         </div>
       )}
-      <div className="mb-3 flex flex-wrap items-center gap-3">
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search items…"
-          className="w-full rounded-md border border-edge px-3 py-1.5 text-sm sm:w-64"
-        />
+
+      <ToolbarRow>
+        <SearchField value={search} onChange={setSearch} placeholder="Search items…" />
+        {toolbar}
         {search && (
-          <span className="text-sm text-muted">
-            {visible.length} of {items.length} shown
-            {" · "}
-            <button
-              type="button"
-              onClick={() => setSearch("")}
-              className="hover:underline"
-            >
-              clear
-            </button>
-          </span>
+          <SearchCount
+            shown={visible.length}
+            total={items.length}
+            onClear={() => setSearch("")}
+          />
         )}
-      </div>
+        <span className="grow" />
+        <MobileSort
+          options={[
+            { key: "name", label: "Name" },
+            { key: "category", label: "Type" },
+            { key: "purchase_price", label: "Cost" },
+            { key: "est_value", label: "Est. value" },
+            { key: "purchase_date", label: "Purchased" },
+          ]}
+          activeKey={sortKey}
+          dir={sortDir}
+          onSort={toggleSort}
+        />
+        {action}
+      </ToolbarRow>
+
+      {items.length === 0 ? (
+        <div className={emptyState}>{empty}</div>
+      ) : (
+        <>
+          {/* Mobile: stacked cards */}
+          <ul className="space-y-3 md:hidden">
+            {visible.map((item) => (
+              <li key={item.id} className="card p-4">
+                <div className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    aria-label={`Select ${item.name}`}
+                    checked={selected.has(item.id)}
+                    onChange={() => toggle(item.id)}
+                    className="mt-1 h-5 w-5 shrink-0 accent-accent"
+                  />
+                  <span
+                    className="h-9 w-2 shrink-0 rounded"
+                    style={{ background: categoryHue(item.category) }}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <Link
+                      href={`/inventory/${item.id}`}
+                      className="font-semibold hover:underline"
+                    >
+                      {item.name}
+                    </Link>
+                    <div className="cap mt-0.5">{detailLine(item)}</div>
+                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-ink-2">
+                      <span className="tnum font-semibold text-ink">
+                        {formatMoney(Number(item.purchase_price))}
+                      </span>
+                      {item.purchase_platform && <span>{item.purchase_platform}</span>}
+                      {item.purchase_date && (
+                        <span className="tnum">{formatDate(item.purchase_date)}</span>
+                      )}
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px]">
+                      <label className="flex items-center gap-2">
+                        <span className="text-muted">Est. value</span>
+                        <EstInput
+                          item={item}
+                          value={estInput(item)}
+                          dirty={itemDirty(item)}
+                          onChange={(v) => setEst(item.id, v)}
+                        />
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={item.listed}
+                          disabled={pending}
+                          onChange={() => toggleListed(item)}
+                          className="h-4 w-4 accent-[var(--pos)]"
+                        />
+                        <span className="text-muted">Listed</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2 pl-8">
+                  <Link href={`/inventory/${item.id}/sell`} className={btnRow}>
+                    Sell
+                  </Link>
+                  <a
+                    href={marketLink(item).url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={btnRow}
+                  >
+                    Value ↗
+                  </a>
+                  <Link href={`/inventory/${item.id}`} className={btnRow}>
+                    Edit
+                  </Link>
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          {/* Desktop: table */}
+          <div className="card hidden overflow-hidden md:block">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[900px] border-collapse text-[13px]">
+                <thead>
+                  <tr className="bg-inset">
+                    <th className="w-[46px] py-3 pl-5">
+                      <input
+                        type="checkbox"
+                        aria-label="Select all"
+                        checked={allSelected}
+                        onChange={toggleAll}
+                        className="h-4 w-4 accent-accent"
+                      />
+                    </th>
+                    <SortHeader label="Item" sortKey="name" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
+                    <SortHeader label="Bought" sortKey="purchase_date" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
+                    <SortHeader label="Cost" sortKey="purchase_price" activeKey={sortKey} dir={sortDir} onSort={toggleSort} align="right" />
+                    <SortHeader label="Est. value" sortKey="est_value" activeKey={sortKey} dir={sortDir} onSort={toggleSort} align="right" />
+                    <th className={`${th} text-center`}>Listed</th>
+                    <th className="py-3 pl-3.5 pr-5">
+                      <span className="sr-only">Actions</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visible.map((item) => {
+                    const picked = selected.has(item.id);
+                    return (
+                      <tr key={item.id} className={picked ? "bg-inset" : ""}>
+                        <td className="border-t border-line py-[15px] pl-5 align-top">
+                          <input
+                            type="checkbox"
+                            aria-label={`Select ${item.name}`}
+                            checked={picked}
+                            onChange={() => toggle(item.id)}
+                            className="h-4 w-4 accent-accent"
+                          />
+                        </td>
+                        <td className={td}>
+                          <div className="flex items-center gap-3">
+                            <span
+                              className="h-8 w-2 shrink-0 rounded"
+                              style={{ background: categoryHue(item.category) }}
+                            />
+                            <div className="min-w-0">
+                              <Link
+                                href={`/inventory/${item.id}`}
+                                className="font-semibold hover:underline"
+                              >
+                                {item.name}
+                              </Link>
+                              <div className="cap mt-0.5">{detailLine(item)}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className={`${td} text-ink-2`}>
+                          <div className="text-xs">{item.purchase_platform ?? "—"}</div>
+                          <div className="cap tnum mt-0.5">
+                            {formatDate(item.purchase_date)}
+                          </div>
+                        </td>
+                        <td className={`${td} tnum text-right text-ink-2`}>
+                          {formatMoney(Number(item.purchase_price))}
+                        </td>
+                        <td className={`${td} text-right`}>
+                          <EstInput
+                            item={item}
+                            value={estInput(item)}
+                            dirty={itemDirty(item)}
+                            onChange={(v) => setEst(item.id, v)}
+                          />
+                        </td>
+                        <td className={`${td} text-center`}>
+                          <input
+                            type="checkbox"
+                            aria-label={`Listed: ${item.name}`}
+                            checked={item.listed}
+                            disabled={pending}
+                            onChange={() => toggleListed(item)}
+                            className="h-4 w-4 accent-[var(--pos)]"
+                          />
+                        </td>
+                        <td className="whitespace-nowrap border-t border-line py-3.5 pl-3.5 pr-5 text-right">
+                          <Link href={`/inventory/${item.id}/sell`} className={btnRow}>
+                            Sell
+                          </Link>
+                          <span className="ml-1.5 inline-block align-middle">
+                            <Menu
+                              label={`More actions for ${item.name}`}
+                              buttonClass={rowMenuButton}
+                              buttonContent={<DotsIcon />}
+                            >
+                              <Link
+                                href={`/inventory/${item.id}`}
+                                data-close
+                                className={menuItem}
+                              >
+                                Edit item
+                              </Link>
+                              <a
+                                href={marketLink(item).url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                data-close
+                                className={menuItem}
+                              >
+                                Look up value on {marketLink(item).label} ↗
+                              </a>
+                            </Menu>
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+
       {selected.size > 0 && (
-        <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-line bg-inset px-4 py-2 text-sm">
-          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="font-medium">{selected.size} selected</span>
-            <span className="text-muted">{formatMoney(pickedCost)} cost</span>
+        <SelectionDock>
+          <span className="whitespace-nowrap text-[13px] font-semibold">
+            {selected.size} selected
           </span>
-          <span className="flex items-center gap-1">
-            <input
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && applyCategory()}
-              list="bulk-categories"
-              placeholder="Category…"
-              className="w-36 rounded-md border border-edge px-2 py-1.5"
-            />
-            <datalist id="bulk-categories">
-              {categorySuggestions.map((c) => (
-                <option key={c} value={c} />
-              ))}
-            </datalist>
-            <button
-              type="button"
-              onClick={applyCategory}
-              disabled={pending || category.trim() === ""}
-              className="rounded-md border border-edge px-3 py-1.5 font-medium hover:bg-inset disabled:opacity-50"
-            >
-              Set category
-            </button>
+          <span className="tnum whitespace-nowrap text-[13px] text-dock-muted">
+            {formatMoney(pickedCost)} cost
           </span>
+          <span className={dockDivider} />
           <button
             type="button"
             onClick={() => {
@@ -370,7 +610,7 @@ export default function InventoryTable({ items }: { items: Item[] }) {
               setBundleOpen(true);
             }}
             disabled={pending}
-            className="rounded-md bg-emerald-600 px-3 py-1.5 font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+            className={dockPrimary}
           >
             Sell together
           </button>
@@ -381,7 +621,7 @@ export default function InventoryTable({ items }: { items: Item[] }) {
               setRipOpen(true);
             }}
             disabled={pending}
-            className="rounded-md border border-violet-300 px-3 py-1.5 font-medium text-violet-700 hover:bg-violet-50 disabled:opacity-50 dark:border-violet-900 dark:text-violet-300 dark:hover:bg-violet-950"
+            className={dockButton}
           >
             Rip open
           </button>
@@ -389,311 +629,104 @@ export default function InventoryTable({ items }: { items: Item[] }) {
             type="button"
             onClick={moveToInvestments}
             disabled={pending}
-            className="rounded-md border border-accent px-3 py-1.5 font-medium text-accent hover:bg-panel disabled:opacity-50"
+            className={dockButton}
           >
-            Move to investments
+            To investments
           </button>
-          <button
-            type="button"
-            onClick={keepPersonal}
-            disabled={pending}
-            className="rounded-md border border-teal-300 px-3 py-1.5 font-medium text-teal-700 hover:bg-teal-50 disabled:opacity-50 dark:border-teal-900 dark:text-teal-300 dark:hover:bg-teal-950"
+          <Menu
+            label="More actions for the selection"
+            buttonClass={dockButton}
+            buttonContent={
+              <>
+                More <ChevronDown />
+              </>
+            }
+            up
           >
-            Keep (personal)
-          </button>
-          <button
-            type="button"
-            onClick={deleteSelected}
-            disabled={pending}
-            className="rounded-md border border-red-300 px-3 py-1.5 font-medium text-neg hover:bg-red-50 disabled:opacity-50 dark:border-red-900 dark:hover:bg-red-950"
-          >
-            {pending ? "Working…" : "Delete selected"}
-          </button>
+            <div className="flex items-center gap-1.5 p-1.5">
+              <input
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && applyCategory()}
+                list="bulk-categories"
+                placeholder="Category…"
+                aria-label="New category"
+                className={`${field} !py-2`}
+              />
+              <datalist id="bulk-categories">
+                {categorySuggestions.map((c) => (
+                  <option key={c} value={c} />
+                ))}
+              </datalist>
+              <button
+                type="button"
+                data-close
+                onClick={applyCategory}
+                disabled={pending || category.trim() === ""}
+                className={btnRow + " whitespace-nowrap"}
+              >
+                Set
+              </button>
+            </div>
+            <button
+              type="button"
+              data-close
+              onClick={keepPersonal}
+              disabled={pending}
+              className={menuItem}
+            >
+              Keep (personal collection)
+            </button>
+            <button
+              type="button"
+              data-close
+              onClick={deleteSelected}
+              disabled={pending}
+              className={`${menuItem} !text-neg`}
+            >
+              {pending ? "Working…" : "Delete selected"}
+            </button>
+          </Menu>
           <button
             type="button"
             onClick={() => setSelected(new Set())}
-            className="text-muted hover:underline"
+            className={dockClear}
           >
             Clear
           </button>
-          {error && (
-            <span className="text-neg">{error}</span>
-          )}
-        </div>
+          {error && <span className="text-[13px] text-[#ffb4ab]">{error}</span>}
+        </SelectionDock>
       )}
 
-      <MobileSort
-        options={[
-          { key: "name", label: "Name" },
-          { key: "category", label: "Type" },
-          { key: "purchase_price", label: "Cost" },
-          { key: "est_value", label: "Est. value" },
-          { key: "purchase_date", label: "Purchased" },
-        ]}
-        activeKey={sortKey}
-        dir={sortDir}
-        onSort={toggleSort}
-      />
-
-      {/* Mobile: stacked cards */}
-      <ul className="space-y-3 md:hidden">
-        {visible.map((item) => (
-          <li
-            key={item.id}
-            className="rounded-xl border border-line bg-surface p-4"
-          >
-            <div className="flex items-start gap-3">
-              <input
-                type="checkbox"
-                aria-label={`Select ${item.name}`}
-                checked={selected.has(item.id)}
-                onChange={() => toggle(item.id)}
-                className="mt-1 h-5 w-5 shrink-0 accent-accent"
-              />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-start justify-between gap-2">
-                  <Link
-                    href={`/inventory/${item.id}`}
-                    className="font-medium hover:underline"
-                  >
-                    {item.name}
-                  </Link>
-                  <span
-                    className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${
-                      isCardCategory(item.category)
-                        ? "bg-violet-50 text-violet-700 dark:bg-violet-950 dark:text-violet-300"
-                        : "bg-inset text-muted"
-                    }`}
-                  >
-                    {item.category}
-                  </span>
-                </div>
-                {cardDetails(item) && (
-                  <span className="mt-0.5 block text-xs text-muted">
-                    {cardDetails(item)}
-                  </span>
-                )}
-                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted">
-                  <span className="font-medium">
-                    {formatMoney(Number(item.purchase_price))}
-                  </span>
-                  {item.quantity > 1 && <span>Qty {item.quantity}</span>}
-                  {item.purchase_platform && <span>{item.purchase_platform}</span>}
-                  {item.purchase_date && (
-                    <span>{formatDate(item.purchase_date)}</span>
-                  )}
-                </div>
-                <div className="mt-2 flex items-center gap-2 text-sm">
-                  <span className="text-muted">Est. value</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    inputMode="decimal"
-                    value={estInput(item)}
-                    onChange={(e) => setEst(item.id, e.target.value)}
-                    placeholder="—"
-                    aria-label={`Estimated value for ${item.name}`}
-                    className={`no-spinner w-28 rounded-md border px-2 py-1 text-right ${
-                      itemDirty(item)
-                        ? "border-amber-400 ring-1 ring-amber-300 dark:border-amber-600 dark:ring-amber-800"
-                        : "border-edge"
-                    }`}
-                  />
-                </div>
-                <label className="mt-2 flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    aria-label={`Listed: ${item.name}`}
-                    checked={item.listed}
-                    disabled={pending}
-                    onChange={() => toggleListed(item)}
-                    className="h-4 w-4 accent-emerald-600"
-                  />
-                  <span className="text-muted">Listed for sale</span>
-                </label>
-              </div>
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <a
-                href={marketLink(item).url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="rounded-md border border-edge px-3 py-2 text-xs font-medium text-muted hover:bg-inset"
-              >
-                Value ↗
-              </a>
-              <Link
-                href={`/inventory/${item.id}/sell`}
-                className="rounded-md bg-emerald-600 px-3 py-2 text-xs font-medium text-white hover:bg-emerald-700"
-              >
-                Sell
-              </Link>
-              <Link
-                href={`/inventory/${item.id}`}
-                className="rounded-md border border-edge px-3 py-2 text-xs font-medium text-muted hover:bg-inset"
-              >
-                Edit
-              </Link>
-            </div>
-          </li>
-        ))}
-      </ul>
-
-      {/* Desktop: table */}
-      <div className="hidden overflow-x-auto rounded-xl border border-line md:block">
-        <table className="w-full min-w-[860px] text-sm">
-          <thead className="bg-inset text-left text-xs uppercase tracking-wide text-muted">
-            <tr>
-              <th className="w-10 px-4 py-3">
-                <input
-                  type="checkbox"
-                  aria-label="Select all"
-                  checked={allSelected}
-                  onChange={toggleAll}
-                  className="accent-accent"
-                />
-              </th>
-              <SortHeader label="Item" sortKey="name" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
-              <SortHeader label="Type" sortKey="category" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
-              <th className="px-4 py-3">Bought at</th>
-              <th className="px-4 py-3 text-right">Qty</th>
-              <SortHeader label="Cost" sortKey="purchase_price" activeKey={sortKey} dir={sortDir} onSort={toggleSort} align="right" />
-              <SortHeader label="Est. value" sortKey="est_value" activeKey={sortKey} dir={sortDir} onSort={toggleSort} align="right" />
-              <SortHeader label="Purchased" sortKey="purchase_date" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
-              <th className="px-4 py-3 text-center">Listed</th>
-              <th className="px-4 py-3" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-line">
-            {visible.map((item) => (
-              <tr key={item.id} className="bg-surface">
-                <td className="px-4 py-3">
-                  <input
-                    type="checkbox"
-                    aria-label={`Select ${item.name}`}
-                    checked={selected.has(item.id)}
-                    onChange={() => toggle(item.id)}
-                    className="accent-accent"
-                  />
-                </td>
-                <td className="px-4 py-3">
-                  <span className="font-medium">{item.name}</span>
-                  {cardDetails(item) && (
-                    <span className="block text-xs text-muted">
-                      {cardDetails(item)}
-                    </span>
-                  )}
-                </td>
-                <td className="px-4 py-3">
-                  <span
-                    className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${
-                      isCardCategory(item.category)
-                        ? "bg-violet-50 text-violet-700 dark:bg-violet-950 dark:text-violet-300"
-                        : "bg-inset text-muted"
-                    }`}
-                  >
-                    {item.category}
-                  </span>
-                </td>
-                <td className="px-4 py-3">{item.purchase_platform ?? "—"}</td>
-                <td className="px-4 py-3 text-right">{item.quantity}</td>
-                <td className="px-4 py-3 text-right">
-                  {formatMoney(Number(item.purchase_price))}
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    inputMode="decimal"
-                    value={estInput(item)}
-                    onChange={(e) => setEst(item.id, e.target.value)}
-                    placeholder="—"
-                    aria-label={`Estimated value for ${item.name}`}
-                    className={`no-spinner w-24 rounded-md border px-2 py-1 text-right text-sm ${
-                      itemDirty(item)
-                        ? "border-amber-400 ring-1 ring-amber-300 dark:border-amber-600 dark:ring-amber-800"
-                        : "border-edge"
-                    }`}
-                  />
-                </td>
-                <td className="px-4 py-3">{formatDate(item.purchase_date)}</td>
-                <td className="px-4 py-3 text-center">
-                  <input
-                    type="checkbox"
-                    aria-label={`Listed: ${item.name}`}
-                    checked={item.listed}
-                    disabled={pending}
-                    onChange={() => toggleListed(item)}
-                    className="h-4 w-4 accent-emerald-600"
-                  />
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex justify-end gap-2">
-                    <a
-                      href={marketLink(item).url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title={`Look up market value on ${marketLink(item).label}`}
-                      className="rounded-md border border-edge px-3 py-1.5 text-xs font-medium text-muted hover:bg-inset"
-                    >
-                      Value ↗
-                    </a>
-                    <Link
-                      href={`/inventory/${item.id}/sell`}
-                      className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700"
-                    >
-                      Sell
-                    </Link>
-                    <Link
-                      href={`/inventory/${item.id}`}
-                      className="rounded-md border border-edge px-3 py-1.5 text-xs font-medium text-muted hover:bg-inset"
-                    >
-                      Edit
-                    </Link>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
       {ripOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-xl border border-line bg-surface p-6 shadow-lg">
-            <h2 className="text-lg font-semibold">
+        <div className={modalOverlay}>
+          <div className={modalPanel}>
+            <h2 className="disp text-lg font-bold">
               Rip open {selected.size} item{selected.size === 1 ? "" : "s"}?
             </h2>
-            <p className="mt-1 text-sm text-muted">
+            <p className="mt-1 text-[13px] text-muted">
               This moves {selected.size === 1 ? "it" : "them"} out of inventory
-              into{" "}
-              <span className="font-medium">For the Love of the Game</span>,
-              keeping the cost. Add whatever you pull as separate $0-cost items.
+              into <span className="font-medium">Opened</span>, keeping the
+              cost. Add whatever you pull as separate items.
             </p>
-            <label className="mt-4 block text-sm">
-              <span className="font-medium">Date opened</span>
+            <label className="mt-4 block">
+              <span className={fieldLabel}>Date opened</span>
               <input
                 type="date"
                 value={ripDate}
                 onChange={(e) => setRipDate(e.target.value)}
-                className="mt-1 w-full rounded-md border border-edge px-3 py-2 text-sm"
+                className={field}
               />
             </label>
 
-            {error && (
-              <p className="mt-3 text-sm text-neg">
-                {error}
-              </p>
-            )}
+            {error && <p className="mt-3 text-sm text-neg">{error}</p>}
 
             <div className="mt-5 flex justify-end gap-2">
               <button
                 type="button"
                 disabled={pending}
                 onClick={() => setRipOpen(false)}
-                className="rounded-md px-4 py-2 text-sm text-muted hover:bg-inset"
+                className={btnSecondary}
               >
                 Cancel
               </button>
@@ -701,7 +734,7 @@ export default function InventoryTable({ items }: { items: Item[] }) {
                 type="button"
                 disabled={pending || ripDate === ""}
                 onClick={ripSelected}
-                className="rounded-md bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
+                className={btnPrimary}
               >
                 {pending ? "Opening…" : "Rip open"}
               </button>
@@ -711,34 +744,34 @@ export default function InventoryTable({ items }: { items: Item[] }) {
       )}
 
       {bundleOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-xl border border-line bg-surface p-6 shadow-lg">
-            <h2 className="text-lg font-semibold">
+        <div className={modalOverlay}>
+          <div className={modalPanel}>
+            <h2 className="disp text-lg font-bold">
               Sell {selected.size} items together
             </h2>
-            <p className="mt-1 text-sm text-muted">
+            <p className="mt-1 text-[13px] text-muted">
               Enter one total payout — it&apos;s split evenly across the{" "}
               {selected.size} items. Each keeps its own cost.
             </p>
 
             <div className="mt-4 space-y-4">
-              <label className="block text-sm">
-                <span className="font-medium">Sale date</span>
+              <label className="block">
+                <span className={fieldLabel}>Sale date</span>
                 <input
                   type="date"
                   value={bundleDate}
                   onChange={(e) => setBundleDate(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-edge px-3 py-2 text-sm"
+                  className={field}
                 />
               </label>
-              <label className="block text-sm">
-                <span className="font-medium">Platform</span>
+              <label className="block">
+                <span className={fieldLabel}>Platform</span>
                 <input
                   value={bundlePlatform}
                   onChange={(e) => setBundlePlatform(e.target.value)}
                   list="bundle-platforms"
                   placeholder="eBay, Whatnot… (optional)"
-                  className="mt-1 w-full rounded-md border border-edge px-3 py-2 text-sm"
+                  className={field}
                 />
                 <datalist id="bundle-platforms">
                   {PLATFORM_SUGGESTIONS.map((p) => (
@@ -746,47 +779,41 @@ export default function InventoryTable({ items }: { items: Item[] }) {
                   ))}
                 </datalist>
               </label>
-              <label className="block text-sm">
-                <span className="font-medium">Total payout</span>
+              <label className="block">
+                <span className={fieldLabel}>Total payout</span>
                 <input
                   type="number"
                   step="0.01"
                   value={bundleTotal}
                   onChange={(e) => setBundleTotal(e.target.value)}
                   placeholder="Total received after fees"
-                  className="mt-1 w-full rounded-md border border-edge px-3 py-2 text-sm"
+                  className={field}
                 />
               </label>
-              <label className="block text-sm">
-                <span className="font-medium">Buyer (name / username)</span>
+              <label className="block">
+                <span className={fieldLabel}>Buyer (name / username)</span>
                 <input
                   value={bundleBuyer}
                   onChange={(e) => setBundleBuyer(e.target.value)}
                   placeholder="Who bought it — optional"
-                  className="mt-1 w-full rounded-md border border-edge px-3 py-2 text-sm"
+                  className={field}
                 />
               </label>
               {bundlePerItem !== null && (
-                <p className="text-sm text-muted">
-                  ≈ {formatMoney(bundlePerItem)} per item
-                  {" "}
-                  (split to the cent)
+                <p className="text-[13px] text-muted">
+                  ≈ {formatMoney(bundlePerItem)} per item (split to the cent)
                 </p>
               )}
             </div>
 
-            {error && (
-              <p className="mt-3 text-sm text-neg">
-                {error}
-              </p>
-            )}
+            {error && <p className="mt-3 text-sm text-neg">{error}</p>}
 
             <div className="mt-5 flex justify-end gap-2">
               <button
                 type="button"
                 disabled={pending}
                 onClick={() => setBundleOpen(false)}
-                className="rounded-md px-4 py-2 text-sm text-muted hover:bg-inset"
+                className={btnSecondary}
               >
                 Cancel
               </button>
@@ -794,7 +821,7 @@ export default function InventoryTable({ items }: { items: Item[] }) {
                 type="button"
                 disabled={pending || !bundleValid}
                 onClick={sellBundle}
-                className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                className={btnPrimary}
               >
                 {pending ? "Selling…" : "Record bundle sale"}
               </button>
@@ -803,5 +830,34 @@ export default function InventoryTable({ items }: { items: Item[] }) {
         </div>
       )}
     </div>
+  );
+}
+
+/** Inline est-value box; turns amber while it holds an unsaved change. */
+function EstInput({
+  item,
+  value,
+  dirty,
+  onChange,
+}: {
+  item: Item;
+  value: string;
+  dirty: boolean;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <input
+      type="number"
+      step="0.01"
+      min="0"
+      inputMode="decimal"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder="—"
+      aria-label={`Estimated value for ${item.name}`}
+      className={`no-spinner tnum w-[94px] rounded-[10px] border bg-surface px-[11px] py-2 text-right text-[13px] text-ink ${
+        dirty ? "border-warn ring-2 ring-warn-surface" : "border-edge"
+      }`}
+    />
   );
 }

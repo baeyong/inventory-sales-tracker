@@ -1,16 +1,18 @@
-import Link from "next/link";
+import BackLink from "@/components/BackLink";
 import ExpenseForm from "@/components/ExpenseForm";
+import PageHero from "@/components/PageHero";
 
 export const metadata = { title: "Add expense · Resale Tracker" };
 
 export default function NewExpensePage() {
   return (
-    <div>
-      <Link href="/expenses" className="text-sm text-muted hover:underline">
-        ← Expenses
-      </Link>
-      <h1 className="mt-2 text-xl font-semibold">Add expense</h1>
-      <div className="mt-6">
+    <div className="flex flex-col gap-3">
+      <BackLink href="/expenses" label="Expenses" />
+      <PageHero
+        title="Add expense"
+        description="Supplies, shipping or fees — anything the business spends that isn’t stock."
+      />
+      <div className="mt-1">
         <ExpenseForm />
       </div>
     </div>

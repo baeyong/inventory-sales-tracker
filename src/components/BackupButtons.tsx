@@ -62,7 +62,7 @@ export default function BackupButtons() {
         type="button"
         onClick={() => run("json")}
         disabled={busy !== null}
-        className="rounded-md border border-edge px-4 py-2 text-sm font-medium hover:bg-inset disabled:opacity-50"
+        className="inline-flex items-center justify-center gap-2 rounded-full bg-surface px-4 py-2.5 text-[13px] font-medium text-ink shadow-pill hover:bg-inset disabled:opacity-50"
       >
         {busy === "json" ? "Preparing…" : "Download JSON (backup)"}
       </button>
@@ -70,7 +70,7 @@ export default function BackupButtons() {
         type="button"
         onClick={() => run("tax")}
         disabled={busy !== null}
-        className="rounded-md border border-accent px-4 py-2 text-sm font-medium text-accent hover:bg-panel disabled:opacity-50"
+        className="inline-flex items-center justify-center gap-2 rounded-full bg-surface px-4 py-2.5 text-[13px] font-medium text-accent shadow-pill hover:bg-inset disabled:opacity-50"
       >
         {busy === "tax" ? "Preparing…" : "Tax summary (CSV)"}
       </button>

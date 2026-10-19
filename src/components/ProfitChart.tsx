@@ -31,19 +31,22 @@ function ProfitTooltip({
     return null;
   }
   return (
-    <div className="rounded-md border border-line bg-surface px-3 py-2 text-xs shadow-sm">
-      <div className="text-muted">{label}</div>
-      <div className="mt-0.5 font-semibold">{formatMoney(payload[0].value)}</div>
+    <div className="card px-3 py-2 text-xs">
+      <div className="cap">{label}</div>
+      <div className="disp tnum mt-0.5 font-bold">{formatMoney(payload[0].value)}</div>
     </div>
   );
 }
 
 export default function ProfitChart({ data }: { data: MonthPoint[] }) {
   return (
-    <div className="profit-chart h-72 w-full">
+    <div className="profit-chart h-56 w-full">
+      {/* Pale bars with the latest month picked out in the accent, as in the
+          mock; a losing month stays red so it can't pass for a small gain. */}
       <style>{`
         .profit-chart {
-          --viz-pos: var(--accent);
+          --viz-bar: var(--bar);
+          --viz-now: var(--accent);
           --viz-neg: var(--neg);
           --viz-grid: var(--line);
           --viz-text: var(--muted);
@@ -60,13 +63,13 @@ export default function ProfitChart({ data }: { data: MonthPoint[] }) {
             dataKey="month"
             tickLine={false}
             axisLine={false}
-            tick={{ fill: "var(--viz-text)", fontSize: 12 }}
+            tick={{ fill: "var(--viz-text)", fontSize: 11 }}
           />
           <YAxis
             width={64}
             tickLine={false}
             axisLine={false}
-            tick={{ fill: "var(--viz-text)", fontSize: 12 }}
+            tick={{ fill: "var(--viz-text)", fontSize: 11 }}
             tickFormatter={(v: number) =>
               v.toLocaleString("en-US", {
                 style: "currency",
@@ -80,15 +83,21 @@ export default function ProfitChart({ data }: { data: MonthPoint[] }) {
             cursor={{ fill: "var(--viz-grid)", opacity: 0.35 }}
             content={<ProfitTooltip />}
           />
-          <Bar dataKey="profit" maxBarSize={40}>
-            {data.map((d) => (
+          <Bar dataKey="profit" maxBarSize={56}>
+            {data.map((d, i) => (
               <Cell
                 key={d.month}
-                fill={d.profit >= 0 ? "var(--viz-pos)" : "var(--viz-neg)"}
+                fill={
+                  d.profit < 0
+                    ? "var(--viz-neg)"
+                    : i === data.length - 1
+                      ? "var(--viz-now)"
+                      : "var(--viz-bar)"
+                }
                 radius={
                   (d.profit >= 0
-                    ? [4, 4, 0, 0]
-                    : [0, 0, 4, 4]) as unknown as number
+                    ? [6, 6, 0, 0]
+                    : [0, 0, 6, 6]) as unknown as number
                 }
               />
             ))}

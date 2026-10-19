@@ -9,22 +9,25 @@ export default function MobileSort<K extends string>({
   activeKey,
   dir,
   onSort,
+  always = false,
 }: {
   options: { key: K; label: string }[];
   activeKey: K | null;
   dir: SortDir;
   onSort: (key: K) => void;
+  /** Show at every width, for lists without clickable column headers. */
+  always?: boolean;
 }) {
   return (
-    <div className="mb-3 flex items-center gap-2 md:hidden">
-      <span className="text-sm text-muted">Sort</span>
+    <div className={`flex items-center gap-2 ${always ? "" : "md:hidden"}`}>
+      <span className="text-xs text-muted">Sort</span>
       <select
         value={activeKey ?? ""}
         onChange={(e) => {
           const v = e.target.value;
           if (v) onSort(v as K);
         }}
-        className="rounded-md border border-edge px-2 py-1.5 text-sm"
+        className="rounded-full border-0 bg-surface py-2.5 pl-4 pr-8 text-xs font-medium text-ink-2 shadow-pill"
       >
         <option value="" disabled>
           Choose…
@@ -41,7 +44,7 @@ export default function MobileSort<K extends string>({
         disabled={!activeKey}
         aria-label={dir === "asc" ? "Ascending" : "Descending"}
         title={dir === "asc" ? "Ascending — tap to flip" : "Descending — tap to flip"}
-        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-edge text-muted hover:bg-inset disabled:opacity-40"
+        className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-surface text-ink-2 shadow-pill hover:bg-inset disabled:opacity-40"
       >
         {dir === "asc" ? "↑" : "↓"}
       </button>

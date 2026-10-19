@@ -9,8 +9,8 @@ export default function SignupPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center p-4">
-      <div className="w-full max-w-sm rounded-xl border border-line bg-surface p-8 shadow-sm">
-        <h1 className="text-xl font-semibold">Create account</h1>
+      <div className="card w-full max-w-sm p-8">
+        <h1 className="disp text-[26px] font-bold">Create account</h1>
         <p className="mt-1 text-sm text-muted">
           Your inventory is private to your account.
         </p>
@@ -22,7 +22,7 @@ export default function SignupPage() {
               name="email"
               required
               autoComplete="email"
-              className="mt-1 w-full rounded-md border border-edge px-3 py-2"
+              className="mt-1.5 w-full rounded-[10px] border border-edge bg-surface px-3 py-2.5 text-[13px] text-ink placeholder:text-muted"
             />
           </label>
           <label className="block text-sm">
@@ -33,7 +33,7 @@ export default function SignupPage() {
               required
               minLength={6}
               autoComplete="new-password"
-              className="mt-1 w-full rounded-md border border-edge px-3 py-2"
+              className="mt-1.5 w-full rounded-[10px] border border-edge bg-surface px-3 py-2.5 text-[13px] text-ink placeholder:text-muted"
             />
           </label>
           {state?.error && (
@@ -49,7 +49,7 @@ export default function SignupPage() {
           <button
             type="submit"
             disabled={pending}
-            className="w-full rounded-md bg-accent py-2 text-sm font-medium text-on-accent hover:bg-accent/90 disabled:opacity-50"
+            className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-accent px-[18px] py-3 text-[13px] font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50"
           >
             {pending ? "Creating account…" : "Sign up"}
           </button>

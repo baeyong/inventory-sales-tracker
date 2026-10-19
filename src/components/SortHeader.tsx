@@ -34,14 +34,14 @@ export default function SortHeader<K extends string>({
         : "text-left";
 
   return (
-    <th className={`px-4 py-3 ${alignCls} ${className}`}>
+    <th className={`px-3.5 py-3 text-[11px] font-semibold tracking-[0.04em] text-muted ${alignCls} ${className}`}>
       <button
         type="button"
         onClick={() => onSort(sortKey)}
-        className={`inline-flex w-full items-center gap-1 uppercase tracking-wide hover:text-ink ${justify}`}
+        className={`inline-flex w-full items-center gap-1 hover:text-ink ${justify}`}
       >
         {label}
-        <span className={active ? "" : "text-muted"}>
+        <span className={`text-[9px] ${active ? "text-ink" : "opacity-50"}`}>
           {active ? (dir === "asc" ? "▲" : "▼") : "↕"}
         </span>
       </button>

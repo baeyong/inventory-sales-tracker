@@ -17,19 +17,19 @@ export default function Home() {
           <div className="mt-8 flex gap-3">
             <Link
               href="/signup"
-              className="rounded-md bg-accent px-5 py-2.5 text-sm font-medium text-on-accent hover:bg-accent/90"
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-accent px-[18px] py-3 text-[13px] font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50"
             >
               Get started
             </Link>
             <Link
               href="/login"
-              className="rounded-md border border-edge px-5 py-2.5 text-sm font-medium text-ink hover:bg-inset"
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-surface px-4 py-2.5 text-[13px] font-medium text-ink shadow-pill hover:bg-inset disabled:opacity-50"
             >
               Log in
             </Link>
           </div>
         ) : (
-          <div className="mt-8 rounded-xl border border-amber-300 bg-amber-50 p-5 text-sm dark:border-amber-800 dark:bg-amber-950">
+          <div className="mt-8 rounded-[18px] bg-warn-surface p-5 text-[13px]">
             <h2 className="font-semibold text-amber-900 dark:text-amber-200">
               One-time setup needed
             </h2>

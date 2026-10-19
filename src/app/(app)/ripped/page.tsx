@@ -2,7 +2,6 @@ import { createClient } from "@/lib/supabase/server";
 import { formatMoney, type Item } from "@/lib/types";
 import OpenedBoxes from "@/components/OpenedBoxes";
 import PageHero from "@/components/PageHero";
-import { HoldingsTabs } from "@/components/SectionTabs";
 
 export const metadata = { title: "Opened boxes · Resale Tracker" };
 
@@ -28,7 +27,6 @@ export default async function RippedPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <HoldingsTabs active="/ripped" />
       <PageHero
         title="Opened boxes"
         description={

@@ -84,7 +84,7 @@ export default function ExpensesTable({
           dir={sortDir}
           onSort={toggleSort}
         />
-        {action}
+        <>{action}</>
       </ToolbarRow>
 
       {expenses.length === 0 ? (

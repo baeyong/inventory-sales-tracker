@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 
 // The pill row under the header that switches between the pages of one
-// section — Holdings (Inventory, Investments, Collection, Opened) and Sales
+// section — Holdings (Inventory, Investments, Collection) and Sales
 // (All sales, Pending). Each tab carries its count so you can see at a glance
 // where things are.
 type Tab = {
@@ -58,12 +58,12 @@ function Tabs({
 export async function HoldingsTabs({
   active,
 }: {
-  active: "/inventory" | "/investments" | "/collection" | "/ripped";
+  active: "/inventory" | "/investments" | "/collection";
 }) {
   const supabase = await createClient();
   const count = () =>
     supabase.from("items").select("id", { count: "exact", head: true });
-  const [inv, invest, keep, opened] = await Promise.all([
+  const [inv, invest, keep] = await Promise.all([
     count()
       .is("sale_date", null)
       .is("opened_at", null)
@@ -71,7 +71,6 @@ export async function HoldingsTabs({
       .is("personal_at", null),
     count().not("invested_at", "is", null),
     count().not("personal_at", "is", null),
-    count().not("opened_at", "is", null),
   ]);
   return (
     <Tabs
@@ -81,7 +80,6 @@ export async function HoldingsTabs({
         { href: "/inventory", label: "Inventory", count: inv.count ?? 0 },
         { href: "/investments", label: "Investments", count: invest.count ?? 0 },
         { href: "/collection", label: "Collection", count: keep.count ?? 0 },
-        { href: "/ripped", label: "Opened", count: opened.count ?? 0 },
       ]}
     />
   );

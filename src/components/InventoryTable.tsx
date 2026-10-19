@@ -368,7 +368,7 @@ export default function InventoryTable({
 
       <ToolbarRow>
         <SearchField value={search} onChange={setSearch} placeholder="Search items…" />
-        {toolbar}
+        <>{toolbar}</>
         {search && (
           <SearchCount
             shown={visible.length}
@@ -389,7 +389,7 @@ export default function InventoryTable({
           dir={sortDir}
           onSort={toggleSort}
         />
-        {action}
+        <>{action}</>
       </ToolbarRow>
 
       {items.length === 0 ? (

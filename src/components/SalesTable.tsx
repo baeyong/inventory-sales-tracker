@@ -428,7 +428,7 @@ export default function SalesTable({
     <div className="flex flex-col gap-4">
       <ToolbarRow>
         <SearchField value={search} onChange={setSearch} placeholder="Search sales…" />
-        {toolbar}
+        <>{toolbar}</>
         {search && (
           <SearchCount
             shown={visible.length}

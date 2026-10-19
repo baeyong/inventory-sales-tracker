@@ -8,6 +8,8 @@ import { formatDate, formatMoney, type Item } from "@/lib/types";
 import { matchesSearch } from "@/lib/search";
 import { btnSmall, btnText, emptyState, signedMoney, toneClass } from "@/lib/ui";
 import { SearchCount, SearchField, ToolbarRow } from "@/components/Toolbar";
+import MobileSort from "@/components/MobileSort";
+import type { SortDir } from "@/lib/sort";
 
 /** Where a pulled card is now, as a coloured chip. */
 function where(item: Item): { label: string; cls: string } {
@@ -45,6 +47,16 @@ function BoxIcon() {
   );
 }
 
+type BoxSortKey = "opened_at" | "name" | "purchase_price" | "pulls" | "delta";
+
+const SORT_OPTIONS: { key: BoxSortKey; label: string }[] = [
+  { key: "opened_at", label: "Date opened" },
+  { key: "name", label: "Name" },
+  { key: "purchase_price", label: "Box cost" },
+  { key: "pulls", label: "Cards pulled" },
+  { key: "delta", label: "Pulls vs. cost" },
+];
+
 /** Ripped boxes, each with the cards pulled from it. A box's cost is split
  * evenly across its pulls, so the footer weighs what they're worth against it. */
 export default function OpenedBoxes({
@@ -56,6 +68,19 @@ export default function OpenedBoxes({
 }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
+  // Newest rips first until you pick something else.
+  const [sortKey, setSortKey] = useState<BoxSortKey>("opened_at");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  function toggleSort(key: BoxSortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      // Dates and amounts read best biggest/newest first; names A to Z.
+      setSortDir(key === "name" ? "asc" : "desc");
+    }
+  }
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -67,11 +92,40 @@ export default function OpenedBoxes({
   }
 
   // A box matches on its own details or on any card pulled from it.
-  const visible = boxes.filter(
-    (b) =>
-      matchesSearch(b, search) ||
-      (pullsOf.get(b.id) ?? []).some((p) => matchesSearch(p, search))
-  );
+  const summary = (b: Item) => {
+    const its = pullsOf.get(b.id) ?? [];
+    const value = its
+      .map(worth)
+      .filter((v): v is number => v !== null)
+      .reduce((s, v) => s + v, 0);
+    return { pulls: its.length, delta: value - Number(b.purchase_price) };
+  };
+  const sortValue = (b: Item): string | number => {
+    switch (sortKey) {
+      case "opened_at":
+        return b.opened_at ?? "";
+      case "name":
+        return b.name.toLowerCase();
+      case "purchase_price":
+        return Number(b.purchase_price);
+      case "pulls":
+        return summary(b).pulls;
+      case "delta":
+        return summary(b).delta;
+    }
+  };
+  const visible = boxes
+    .filter(
+      (b) =>
+        matchesSearch(b, search) ||
+        (pullsOf.get(b.id) ?? []).some((p) => matchesSearch(p, search))
+    )
+    .sort((a, b) => {
+      const x = sortValue(a);
+      const y = sortValue(b);
+      const c = x < y ? -1 : x > y ? 1 : 0;
+      return sortDir === "asc" ? c : -c;
+    });
 
   function moveBack(id: string) {
     setError(null);
@@ -98,6 +152,14 @@ export default function OpenedBoxes({
           />
         )}
         {error && <span className="text-sm text-neg">{error}</span>}
+        <span className="grow" />
+        <MobileSort
+          always
+          options={SORT_OPTIONS}
+          activeKey={sortKey}
+          dir={sortDir}
+          onSort={toggleSort}
+        />
       </ToolbarRow>
 
       {boxes.length === 0 && (

@@ -6,12 +6,13 @@ import { useRouter } from "next/navigation";
 import { bulkSetFulfillment, updateFulfillment } from "@/app/(app)/actions";
 import { formatDate, formatMoney, type Item } from "@/lib/types";
 import { buildBundleMeta, groupBundles, type BundleMeta } from "@/lib/bundles";
+import { categoryHue } from "@/lib/categoryHue";
 
 type Field = "payment_received" | "shipped";
 
 function Detail({ item }: { item: Item }) {
   return (
-    <span className="block text-xs text-zinc-500">
+    <span className="cap mt-0.5 block">
       Sold {formatDate(item.sale_date)}
       {item.sale_platform && <> · on {item.sale_platform}</>}
       {item.purchase_platform && <> · from {item.purchase_platform}</>}
@@ -53,20 +54,20 @@ function Section({
   }
 
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
-      <div className="flex items-center justify-between border-b border-zinc-100 px-4 py-3 dark:border-zinc-800">
-        <h2 className="font-semibold">{title}</h2>
+    <section className="card overflow-hidden">
+      <div className="flex items-center justify-between bg-panel px-5 py-[15px]">
+        <h2 className="disp text-[15px] font-bold">{title}</h2>
         <div className="flex items-center gap-2">
           {total !== undefined && items.length > 0 && (
-            <span className="text-sm font-semibold text-amber-700 dark:text-amber-300">
+            <span className="disp tnum text-[15px] font-bold">
               {formatMoney(total)}
             </span>
           )}
           <span
-            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+            className={`tnum rounded-full px-[9px] py-[3px] text-[11px] font-semibold ${
               items.length === 0
-                ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
-                : "bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
+                ? "bg-pos-surface text-pos"
+                : "bg-warn-surface text-warn"
             }`}
           >
             {items.length === 0 ? "All done" : items.length}
@@ -74,9 +75,9 @@ function Section({
         </div>
       </div>
       {items.length === 0 ? (
-        <p className="px-4 py-6 text-sm text-zinc-500">Nothing waiting. 🎉</p>
+        <p className="px-5 py-6 text-[13px] text-muted">Nothing waiting.</p>
       ) : (
-        <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
+        <ul>
           {ordered.map((item) => {
             const meta = item.bundle_id
               ? bundleMeta.get(item.bundle_id)
@@ -93,9 +94,7 @@ function Section({
             return (
               <li
                 key={item.id}
-                className={`flex items-start gap-3 px-4 py-3 text-sm ${
-                  showBundle ? `border-l-4 ${meta!.color.stripe}` : ""
-                }`}
+                className="flex items-start gap-3 border-t border-line px-5 py-[13px] text-[13px] first:border-t-0"
               >
                 <input
                   type="checkbox"
@@ -107,28 +106,32 @@ function Section({
                       ? `${actionLabel}: bundle ${meta!.num}`
                       : `${actionLabel}: ${item.name}`
                   }
-                  className="mt-0.5 h-5 w-5 shrink-0 accent-emerald-600"
+                  className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--pos)]"
                 />
                 <div className="min-w-0 flex-1">
                   {showBundle && (
-                    <span
-                      className={`mb-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${meta!.color.badge}`}
-                    >
-                      <span
-                        className={`h-2 w-2 rounded-full ${meta!.color.dot}`}
-                      />
+                    <span className="mb-1.5 inline-flex rounded-full bg-soft px-[11px] py-1 text-[11px] font-bold text-on-soft">
                       Bundle {meta!.num} · {members.length} items
                     </span>
                   )}
                   {members.map((m) => (
-                    <div key={m.id} className={showBundle ? "mt-0.5" : ""}>
-                      <Link
-                        href={`/inventory/${m.id}`}
-                        className="font-medium hover:underline"
-                      >
-                        {m.name}
-                      </Link>
-                      <Detail item={m} />
+                    <div
+                      key={m.id}
+                      className={`flex items-center gap-3 ${showBundle ? "mt-1.5" : ""}`}
+                    >
+                      <span
+                        className="h-[30px] w-2 shrink-0 rounded"
+                        style={{ background: categoryHue(m.category) }}
+                      />
+                      <div className="min-w-0">
+                        <Link
+                          href={`/inventory/${m.id}`}
+                          className="font-semibold hover:underline"
+                        >
+                          {m.name}
+                        </Link>
+                        <Detail item={m} />
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -137,7 +140,7 @@ function Section({
           })}
         </ul>
       )}
-    </div>
+    </section>
   );
 }
 
@@ -175,9 +178,9 @@ export default function PendingLists({
   );
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+    <div className="grid grid-cols-1 items-start gap-3.5 lg:grid-cols-2">
       <Section
-        title="💰 Awaiting payment"
+        title="Awaiting payment"
         items={awaitingPayment}
         field="payment_received"
         actionLabel="Mark payment received"
@@ -187,7 +190,7 @@ export default function PendingLists({
         total={awaitingTotal}
       />
       <Section
-        title="📦 To ship"
+        title="To ship"
         items={toShip}
         field="shipped"
         actionLabel="Mark shipped"

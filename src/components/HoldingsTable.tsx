@@ -1,38 +1,33 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  bulkMarkUnopened,
-  bulkUnmarkInvestment,
-  bulkUnmarkPersonal,
-} from "@/app/(app)/actions";
+import { bulkUnmarkInvestment, bulkUnmarkPersonal } from "@/app/(app)/actions";
 import { formatDate, formatMoney, isCardCategory, type Item } from "@/lib/types";
 import { matchesSearch } from "@/lib/search";
 import { sortItems, type SortDir, type SortKey } from "@/lib/sort";
+import { categoryHue } from "@/lib/categoryHue";
+import { btnRow, emptyState, td, th } from "@/lib/ui";
 import SortHeader from "@/components/SortHeader";
 import MobileSort from "@/components/MobileSort";
+import { SearchCount, SearchField, ToolbarRow } from "@/components/Toolbar";
 
-/** The three pages that list items held outside Inventory — Investments,
- * Personal Collection and opened boxes — are the same table. This is it; the
- * config below is the complete set of differences between them. */
-export type HoldingKind = "investment" | "personal" | "opened";
+/** Investments and the Personal Collection list items held outside Inventory
+ * in the same table. This is it; the config below is the complete set of
+ * differences between them. (Opened boxes have their own view, grouped with
+ * what was pulled from each.) */
+export type HoldingKind = "investment" | "personal";
 
 /** The date column that says when an item entered this list. */
-type StateKey = "invested_at" | "personal_at" | "opened_at";
+type StateKey = "invested_at" | "personal_at";
 
 type Config = {
   /** Clears the state column and sends the item back to Inventory. */
   moveBack: (ids: string[]) => Promise<{ error?: string }>;
   searchPlaceholder: string;
-  /** "Item" everywhere except opened boxes, which hold products not items. */
-  nameLabel: string;
   stateKey: StateKey;
   stateLabel: string;
-  /** Opened boxes don't carry an estimated value — the pulls do. */
-  showEstValue: boolean;
-  backTitle: string;
   sortOptions: { key: SortKey; label: string }[];
 };
 
@@ -40,11 +35,8 @@ const CONFIG: Record<HoldingKind, Config> = {
   investment: {
     moveBack: bulkUnmarkInvestment,
     searchPlaceholder: "Search holdings…",
-    nameLabel: "Item",
     stateKey: "invested_at",
     stateLabel: "Moved",
-    showEstValue: true,
-    backTitle: "Move back to inventory",
     sortOptions: [
       { key: "name", label: "Item" },
       { key: "category", label: "Type" },
@@ -57,11 +49,8 @@ const CONFIG: Record<HoldingKind, Config> = {
   personal: {
     moveBack: bulkUnmarkPersonal,
     searchPlaceholder: "Search collection…",
-    nameLabel: "Item",
     stateKey: "personal_at",
     stateLabel: "Kept since",
-    showEstValue: true,
-    backTitle: "Move back to inventory",
     sortOptions: [
       { key: "name", label: "Item" },
       { key: "category", label: "Type" },
@@ -71,31 +60,29 @@ const CONFIG: Record<HoldingKind, Config> = {
       { key: "personal_at", label: "Kept since" },
     ],
   },
-  opened: {
-    moveBack: bulkMarkUnopened,
-    searchPlaceholder: "Search opened product…",
-    nameLabel: "Product",
-    stateKey: "opened_at",
-    stateLabel: "Opened",
-    showEstValue: false,
-    backTitle: "Move back to inventory (unopened)",
-    sortOptions: [
-      { key: "name", label: "Product" },
-      { key: "category", label: "Type" },
-      { key: "purchase_platform", label: "Bought at" },
-      { key: "purchase_date", label: "Purchased" },
-      { key: "purchase_price", label: "Cost" },
-      { key: "opened_at", label: "Opened" },
-    ],
-  },
 };
+
+function detailLine(item: Item): string {
+  const card = isCardCategory(item.category)
+    ? [
+        item.card_set,
+        item.card_number ? `#${item.card_number}` : null,
+        item.condition === "graded"
+          ? `${item.grade_company ?? ""} ${item.grade ?? ""}`.trim()
+          : "Raw",
+      ]
+    : [];
+  return [item.category, ...card].filter(Boolean).join(" · ");
+}
 
 export default function HoldingsTable({
   items,
   kind,
+  empty,
 }: {
   items: Item[];
   kind: HoldingKind;
+  empty?: ReactNode;
 }) {
   const cfg = CONFIG[kind];
   const router = useRouter();
@@ -129,171 +116,154 @@ export default function HoldingsTable({
     });
   }
 
+  const hueBar = (item: Item) => (
+    <span
+      className="h-8 w-2 shrink-0 rounded"
+      style={{ background: categoryHue(item.category) }}
+    />
+  );
+
   return (
-    <div>
-      <div className="mb-3 flex flex-wrap items-center gap-3">
-        <input
+    <div className="flex flex-col gap-4">
+      <ToolbarRow>
+        <SearchField
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={setSearch}
           placeholder={cfg.searchPlaceholder}
-          className="w-full rounded-md border border-zinc-300 px-3 py-1.5 text-sm sm:w-64 dark:border-zinc-700 dark:bg-zinc-950"
         />
         {search && (
-          <span className="text-sm text-zinc-500">
-            {visible.length} of {items.length} shown
-            {" · "}
-            <button
-              type="button"
-              onClick={() => setSearch("")}
-              className="hover:underline"
-            >
-              clear
-            </button>
-          </span>
+          <SearchCount
+            shown={visible.length}
+            total={items.length}
+            onClear={() => setSearch("")}
+          />
         )}
-        {error && (
-          <span className="text-sm text-red-600 dark:text-red-400">{error}</span>
-        )}
-      </div>
+        {error && <span className="text-sm text-neg">{error}</span>}
+        <span className="grow" />
+        <MobileSort
+          options={cfg.sortOptions}
+          activeKey={sortKey}
+          dir={sortDir}
+          onSort={toggleSort}
+        />
+      </ToolbarRow>
 
-      <MobileSort
-        options={cfg.sortOptions}
-        activeKey={sortKey}
-        dir={sortDir}
-        onSort={toggleSort}
-      />
-
-      {/* Mobile: stacked cards */}
-      <ul className="space-y-3 md:hidden">
-        {visible.map((item) => (
-          <li
-            key={item.id}
-            className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950"
-          >
-            <div className="flex items-start justify-between gap-2">
-              <Link
-                href={`/inventory/${item.id}`}
-                className="font-medium hover:underline"
-              >
-                {item.name}
-              </Link>
-              <span
-                className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${
-                  isCardCategory(item.category)
-                    ? "bg-violet-50 text-violet-700 dark:bg-violet-950 dark:text-violet-300"
-                    : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
-                }`}
-              >
-                {item.category}
-              </span>
-            </div>
-            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-sm text-zinc-600 dark:text-zinc-300">
-              <span className="font-medium">
-                {formatMoney(Number(item.purchase_price))}
-              </span>
-              {cfg.showEstValue && item.est_value !== null && (
-                <span title="Your estimated value">
-                  ≈ {formatMoney(Number(item.est_value))}
-                </span>
-              )}
-              {item.purchase_platform && (
-                <span className="text-zinc-500">{item.purchase_platform}</span>
-              )}
-              <span className="text-zinc-500">
-                Purchased {formatDate(item.purchase_date)}
-              </span>
-              <span className="text-zinc-500">
-                {cfg.stateLabel} {formatDate(item[cfg.stateKey])}
-              </span>
-            </div>
-            <div className="mt-3">
-              <button
-                type="button"
-                disabled={pending}
-                onClick={() => moveBack(item.id)}
-                className="text-xs text-zinc-500 hover:text-blue-600 hover:underline disabled:opacity-50"
-              >
-                Back to inventory
-              </button>
-            </div>
-          </li>
-        ))}
-      </ul>
-
-      {/* Desktop: table. One column narrower without Est. value. */}
-      <div className="hidden overflow-x-auto rounded-xl border border-zinc-200 md:block dark:border-zinc-800">
-        <table
-          className={`w-full text-sm ${
-            cfg.showEstValue ? "min-w-[860px]" : "min-w-[820px]"
-          }`}
-        >
-          <thead className="bg-zinc-50 text-left text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
-            <tr>
-              <SortHeader label={cfg.nameLabel} sortKey="name" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
-              <SortHeader label="Type" sortKey="category" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
-              <SortHeader label="Bought at" sortKey="purchase_platform" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
-              <SortHeader label="Purchased" sortKey="purchase_date" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
-              <SortHeader label="Cost" sortKey="purchase_price" activeKey={sortKey} dir={sortDir} onSort={toggleSort} align="right" />
-              {cfg.showEstValue && (
-                <SortHeader label="Est. value" sortKey="est_value" activeKey={sortKey} dir={sortDir} onSort={toggleSort} align="right" />
-              )}
-              <SortHeader label={cfg.stateLabel} sortKey={cfg.stateKey} activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
-              <th className="px-4 py-3" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+      {items.length === 0 ? (
+        <div className={emptyState}>{empty}</div>
+      ) : (
+        <>
+          {/* Mobile: stacked cards */}
+          <ul className="space-y-3 md:hidden">
             {visible.map((item) => (
-              <tr key={item.id} className="bg-white dark:bg-zinc-950">
-                <td className="px-4 py-3">
-                  <Link
-                    href={`/inventory/${item.id}`}
-                    className="font-medium hover:underline"
-                  >
-                    {item.name}
-                  </Link>
-                </td>
-                <td className="px-4 py-3">
-                  <span
-                    className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${
-                      isCardCategory(item.category)
-                        ? "bg-violet-50 text-violet-700 dark:bg-violet-950 dark:text-violet-300"
-                        : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
-                    }`}
-                  >
-                    {item.category}
-                  </span>
-                </td>
-                <td className="px-4 py-3">{item.purchase_platform ?? "—"}</td>
-                <td className="px-4 py-3">{formatDate(item.purchase_date)}</td>
-                <td className="px-4 py-3 text-right">
-                  {formatMoney(Number(item.purchase_price))}
-                </td>
-                {cfg.showEstValue && (
-                  <td className="px-4 py-3 text-right">
-                    {item.est_value === null ? (
-                      <span className="text-zinc-400">—</span>
-                    ) : (
-                      formatMoney(Number(item.est_value))
-                    )}
-                  </td>
-                )}
-                <td className="px-4 py-3">{formatDate(item[cfg.stateKey])}</td>
-                <td className="px-4 py-3 text-right">
+              <li key={item.id} className="card p-4">
+                <div className="flex items-start gap-3">
+                  {hueBar(item)}
+                  <div className="min-w-0 flex-1">
+                    <Link
+                      href={`/inventory/${item.id}`}
+                      className="font-semibold hover:underline"
+                    >
+                      {item.name}
+                    </Link>
+                    <div className="cap mt-0.5">{detailLine(item)}</div>
+                    <div className="tnum mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-ink-2">
+                      <span className="font-semibold text-ink">
+                        {formatMoney(Number(item.purchase_price))}
+                      </span>
+                      {item.est_value !== null && (
+                        <span>worth {formatMoney(Number(item.est_value))}</span>
+                      )}
+                      <span>
+                        {cfg.stateLabel} {formatDate(item[cfg.stateKey])}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-3 pl-5">
                   <button
                     type="button"
-                    title={cfg.backTitle}
                     disabled={pending}
                     onClick={() => moveBack(item.id)}
-                    className="text-xs text-zinc-500 hover:text-blue-600 hover:underline disabled:opacity-50"
+                    className={btnRow}
                   >
                     Back to inventory
                   </button>
-                </td>
-              </tr>
+                </div>
+              </li>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </ul>
+
+          {/* Desktop: table */}
+          <div className="card hidden overflow-hidden md:block">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[860px] border-collapse text-[13px]">
+                <thead>
+                  <tr className="bg-inset">
+                    <SortHeader label="Item" sortKey="name" activeKey={sortKey} dir={sortDir} onSort={toggleSort} className="pl-5" />
+                    <SortHeader label="Bought" sortKey="purchase_date" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
+                    <SortHeader label="Cost" sortKey="purchase_price" activeKey={sortKey} dir={sortDir} onSort={toggleSort} align="right" />
+                    <SortHeader label="Est. value" sortKey="est_value" activeKey={sortKey} dir={sortDir} onSort={toggleSort} align="right" />
+                    <SortHeader label={cfg.stateLabel} sortKey={cfg.stateKey} activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
+                    <th className={`${th} pr-5`}>
+                      <span className="sr-only">Actions</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visible.map((item) => (
+                    <tr key={item.id}>
+                      <td className={`${td} pl-5`}>
+                        <div className="flex items-center gap-3">
+                          {hueBar(item)}
+                          <div className="min-w-0">
+                            <Link
+                              href={`/inventory/${item.id}`}
+                              className="font-semibold hover:underline"
+                            >
+                              {item.name}
+                            </Link>
+                            <div className="cap mt-0.5">{detailLine(item)}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className={`${td} text-ink-2`}>
+                        <div className="text-xs">{item.purchase_platform ?? "—"}</div>
+                        <div className="cap tnum mt-0.5">
+                          {formatDate(item.purchase_date)}
+                        </div>
+                      </td>
+                      <td className={`${td} tnum text-right text-ink-2`}>
+                        {formatMoney(Number(item.purchase_price))}
+                      </td>
+                      <td className={`${td} disp tnum text-right text-[15px] font-bold`}>
+                        {item.est_value === null ? (
+                          <span className="text-muted">—</span>
+                        ) : (
+                          formatMoney(Number(item.est_value))
+                        )}
+                      </td>
+                      <td className={`${td} tnum text-ink-2`}>
+                        {formatDate(item[cfg.stateKey])}
+                      </td>
+                      <td className={`${td} pr-5 text-right`}>
+                        <button
+                          type="button"
+                          title="Move back to inventory"
+                          disabled={pending}
+                          onClick={() => moveBack(item.id)}
+                          className={`${btnRow} whitespace-nowrap`}
+                        >
+                          Back to inventory
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

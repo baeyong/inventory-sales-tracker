@@ -2,7 +2,8 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { formatMoney, type Item } from "@/lib/types";
 import HoldingsTable from "@/components/HoldingsTable";
-import PageStats, { type Stat } from "@/components/PageStats";
+import PageHero, { type Stat } from "@/components/PageHero";
+import { HoldingsTabs } from "@/components/SectionTabs";
 
 export const metadata = { title: "Personal Collection · Resale Tracker" };
 
@@ -22,10 +23,6 @@ export default async function CollectionPage() {
   // No profit figure here on purpose: these aren't for sale, so what they'd
   // earn is beside the point — cost and what they're worth is the useful part.
   const stats: Stat[] = [
-    {
-      label: items.length === 1 ? "Item" : "Items",
-      value: String(items.length),
-    },
     { label: "Cost", value: formatMoney(totalCost) },
     ...(valued.length > 0
       ? [{ label: "Est. value", value: formatMoney(totalValue) }]
@@ -33,36 +30,27 @@ export default async function CollectionPage() {
   ];
 
   return (
-    <div>
-      <h1 className="text-xl font-semibold">🗃️ Personal Collection</h1>
-      <p className="mt-1 max-w-2xl text-sm text-zinc-500">
-        Keepers you aren&rsquo;t selling at all. They stay out of{" "}
-        <Link href="/inventory" className="text-blue-600 hover:underline">
-          Inventory
-        </Link>{" "}
-        and, unlike{" "}
-        <Link href="/investments" className="text-blue-600 hover:underline">
-          Investments
-        </Link>
-        , their cost is reported separately from business stock in the Tax
-        Summary. Move anything back if you change your mind.
-      </p>
-      {items.length > 0 && <PageStats stats={stats} />}
-
-      {items.length === 0 ? (
-        <div className="mt-10 rounded-xl border border-dashed border-zinc-300 p-10 text-center text-sm text-zinc-500 dark:border-zinc-700">
-          Nothing here yet. In{" "}
-          <Link href="/inventory" className="text-blue-600 hover:underline">
-            Inventory
-          </Link>
-          , select what you&rsquo;re keeping and hit{" "}
-          <span className="font-medium">Keep (personal)</span>.
-        </div>
-      ) : (
-        <div className="mt-6">
-          <HoldingsTable items={items} kind="personal" />
-        </div>
-      )}
+    <div className="flex flex-col gap-4">
+      <HoldingsTabs active="/collection" />
+      <PageHero
+        title="Personal Collection"
+        description="Keepers you aren’t selling at all. Unlike Investments, their cost is reported separately from business stock in the Tax Summary. Move anything back if you change your mind."
+        stats={items.length > 0 ? stats : undefined}
+      />
+      <HoldingsTable
+        items={items}
+        kind="personal"
+        empty={
+          <>
+            Nothing here yet. In{" "}
+            <Link href="/inventory" className="text-accent hover:underline">
+              Inventory
+            </Link>
+            , select what you&rsquo;re keeping and choose{" "}
+            <span className="font-medium">More → Keep (personal collection)</span>.
+          </>
+        }
+      />
     </div>
   );
 }

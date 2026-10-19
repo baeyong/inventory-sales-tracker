@@ -2,7 +2,9 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { formatMoney, type Item } from "@/lib/types";
 import HoldingsTable from "@/components/HoldingsTable";
-import PageStats, { type Stat } from "@/components/PageStats";
+import PageHero, { type Stat } from "@/components/PageHero";
+import { HoldingsTabs } from "@/components/SectionTabs";
+import { signedMoney } from "@/lib/ui";
 
 export const metadata = { title: "Investments · Resale Tracker" };
 
@@ -24,17 +26,13 @@ export default async function InvestmentsPage() {
     totalValue - valued.reduce((sum, i) => sum + Number(i.purchase_price), 0);
 
   const stats: Stat[] = [
-    {
-      label: items.length === 1 ? "Holding" : "Holdings",
-      value: String(items.length),
-    },
     { label: "Cost", value: formatMoney(totalCost) },
     ...(valued.length > 0
       ? [
           { label: "Est. value", value: formatMoney(totalValue) },
           {
-            label: "Potential profit",
-            value: formatMoney(potential),
+            label: "Potential",
+            value: signedMoney(potential),
             tone: potential >= 0 ? ("pos" as const) : ("neg" as const),
           },
         ]
@@ -42,33 +40,27 @@ export default async function InvestmentsPage() {
   ];
 
   return (
-    <div>
-      <h1 className="text-xl font-semibold">📈 Investments</h1>
-      <p className="mt-1 max-w-2xl text-sm text-zinc-500">
-        Long-term holds you aren&rsquo;t planning to sell soon. They keep their
-        cost and estimated value but stay out of{" "}
-        <Link href="/inventory" className="text-blue-600 hover:underline">
-          Inventory
-        </Link>
-        , so they don&rsquo;t clutter what you&rsquo;re actively flipping. Move
-        any of them back whenever you want to sell.
-      </p>
-      {items.length > 0 && <PageStats stats={stats} />}
-
-      {items.length === 0 ? (
-        <div className="mt-10 rounded-xl border border-dashed border-zinc-300 p-10 text-center text-sm text-zinc-500 dark:border-zinc-700">
-          Nothing here yet. In{" "}
-          <Link href="/inventory" className="text-blue-600 hover:underline">
-            Inventory
-          </Link>
-          , select what you&rsquo;re holding long-term and hit{" "}
-          <span className="font-medium">Move to investments</span>.
-        </div>
-      ) : (
-        <div className="mt-6">
-          <HoldingsTable items={items} kind="investment" />
-        </div>
-      )}
+    <div className="flex flex-col gap-4">
+      <HoldingsTabs active="/investments" />
+      <PageHero
+        title="Investments"
+        description="Long-term holds you aren’t planning to sell soon. They keep their cost and estimated value but stay out of Inventory, so they don’t clutter what you’re actively flipping."
+        stats={items.length > 0 ? stats : undefined}
+      />
+      <HoldingsTable
+        items={items}
+        kind="investment"
+        empty={
+          <>
+            Nothing here yet. In{" "}
+            <Link href="/inventory" className="text-accent hover:underline">
+              Inventory
+            </Link>
+            , select what you&rsquo;re holding long-term and choose{" "}
+            <span className="font-medium">To investments</span>.
+          </>
+        }
+      />
     </div>
   );
 }

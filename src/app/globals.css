@@ -1,28 +1,176 @@
 @import "tailwindcss";
 
+/* Dark mode is a deliberate choice, not the OS setting: `dark:` responds to a
+   .dark class that the toggle writes. The inline script in layout.tsx restores
+   the saved choice before first paint, and falls back to the OS preference for
+   anyone who has never touched the switch — so nothing changes for them. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* The "Sky" palette, from the redesign mocks. Semantic names, so a component
+   says what a colour means rather than which blue it is. Profit/loss keep green
+   and red to themselves — the brand accent is never either. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+
+  --ground: #f2f7fc; /* page behind everything */
+  --surface: #ffffff; /* cards */
+  --panel: #daeafa; /* the pale hero panel and bundle/box heads */
+  --panel-ink: #3c6188; /* body text on the panel */
+  --panel-strong: #0e4f94; /* the headline figure on the panel */
+  --inset: #f4f8fd; /* tinted wells inside cards */
+  --ink: #0f2740;
+  --ink-2: #3e5873; /* secondary body text */
+  --muted: #5a7390;
+  --line: #e8f0f9;
+  --edge: #c9dbee; /* input outlines — firmer than a divider */
+
+  --accent: #1660bf;
+  --accent-hover: #0f4a96;
+  --on-accent: #ffffff;
+  --soft: #e3effb; /* accent-tinted badges */
+  --on-soft: #0f4a96;
+  --bar: #bbd9f5; /* chart bars that aren't the highlighted month */
+
+  --pos: #136c3c;
+  --pos-surface: #e6f4ec;
+  --neg: #a81f18;
+  --neg-surface: #fdf4f3;
+  --warn: #8a4a05;
+  --warn-surface: #fceedc;
+  --hold: #0a5468; /* investments */
+  --hold-surface: #deedf2;
+  --keep: #5b21b6; /* personal collection */
+  --keep-surface: #ede7fb;
+
+  /* The floating selection bar: dark in both themes so it reads as a layer
+     above the page rather than part of it. */
+  --dock: #0f2740;
+  --dock-2: #23405c;
+  --dock-muted: #a9c4de;
+  --dock-line: #2c4a68;
+
+  --card-shadow: 0 2px 10px rgb(15 39 64 / 0.07);
+  --pill-shadow: 0 1px 3px rgb(15 39 64 / 0.08);
+  --dock-shadow: 0 12px 32px rgb(15 39 64 / 0.3);
+}
+
+.dark {
+  color-scheme: dark;
+
+  --ground: #0b1622;
+  --surface: #132233;
+  --panel: #17304a;
+  --panel-ink: #a6c4e2;
+  --panel-strong: #8cc6ff;
+  --inset: #0f1d2c;
+  --ink: #e6eef6;
+  --ink-2: #b6c7d9;
+  --muted: #8fa6bd;
+  --line: #1f3349;
+  --edge: #2f4c6a;
+
+  /* Lifted so it still passes contrast on a dark ground; the light accent is
+     too dark to read against #0b1622. */
+  --accent: #4d9be8;
+  --accent-hover: #74b2ef;
+  --on-accent: #06121d;
+  --soft: #18334f;
+  --on-soft: #9fcbf5;
+  --bar: #2a4a6b;
+
+  --pos: #4bc07e;
+  --pos-surface: #11291c;
+  --neg: #ff8275;
+  --neg-surface: #2b1717;
+  --warn: #e8b35c;
+  --warn-surface: #2a2113;
+  --hold: #6fd0e0;
+  --hold-surface: #10303a;
+  --keep: #c4a8ff;
+  --keep-surface: #251c3d;
+
+  --dock: #1f3a57;
+  --dock-2: #2c4d6e;
+  --dock-muted: #a9c4de;
+  --dock-line: #3a5d80;
+
+  --card-shadow: 0 2px 10px rgb(0 0 0 / 0.35);
+  --pill-shadow: 0 1px 3px rgb(0 0 0 / 0.3);
+  --dock-shadow: 0 12px 32px rgb(0 0 0 / 0.5);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-ground: var(--ground);
+  --color-surface: var(--surface);
+  --color-panel: var(--panel);
+  --color-panel-ink: var(--panel-ink);
+  --color-panel-strong: var(--panel-strong);
+  --color-inset: var(--inset);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-edge: var(--edge);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-on-accent: var(--on-accent);
+  --color-soft: var(--soft);
+  --color-on-soft: var(--on-soft);
+  --color-bar: var(--bar);
+  --color-pos: var(--pos);
+  --color-pos-surface: var(--pos-surface);
+  --color-neg: var(--neg);
+  --color-neg-surface: var(--neg-surface);
+  --color-warn: var(--warn);
+  --color-warn-surface: var(--warn-surface);
+  --color-hold: var(--hold);
+  --color-hold-surface: var(--hold-surface);
+  --color-keep: var(--keep);
+  --color-keep-surface: var(--keep-surface);
+  --color-dock: var(--dock);
+  --color-dock-2: var(--dock-2);
+  --color-dock-muted: var(--dock-muted);
+  --color-dock-line: var(--dock-line);
+
+  --shadow-card: var(--card-shadow);
+  --shadow-pill: var(--pill-shadow);
+  --shadow-dock: var(--dock-shadow);
+
+  --font-sans: var(--font-public-sans);
+  --font-display: var(--font-space-grotesk);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* A white card with the soft shadow every surface in the mocks shares. */
+@utility card {
+  background-color: var(--surface);
+  border-radius: 18px;
+  box-shadow: var(--card-shadow);
+}
+
+/* Small label above a figure or column — the mocks' "cap" style. */
+@utility cap {
+  font-size: 11px;
+  line-height: 1.35;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+/* Display face for headings and figures. */
+@utility disp {
+  font-family: var(--font-display), system-ui, sans-serif;
+  letter-spacing: -0.02em;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+/* Figures line up in columns and don't jitter as they change. */
+.tnum {
+  font-variant-numeric: tabular-nums;
 }
 
 /* Hide the up/down spinner on number inputs that opt in with .no-spinner,
@@ -38,12 +186,10 @@ body {
 }
 
 /* The native date picker's calendar icon is dark by default and nearly
-   invisible on the dark input background — make it white in dark mode. */
+   invisible on a dark input — make it light when the dark theme is on. */
 input[type="date"]::-webkit-calendar-picker-indicator {
   cursor: pointer;
 }
-@media (prefers-color-scheme: dark) {
-  input[type="date"]::-webkit-calendar-picker-indicator {
-    filter: invert(1) brightness(1.6);
-  }
+.dark input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(1.6);
 }

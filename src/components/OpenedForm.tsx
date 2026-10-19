@@ -2,9 +2,9 @@
 
 import { useActionState } from "react";
 import { updateOpenedDate, type FormState } from "@/app/(app)/actions";
+import { btnPrimary, field, fieldLabel } from "@/lib/ui";
 
-const inputCls =
-  "mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950";
+const inputCls = field;
 
 export default function OpenedForm({
   itemId,
@@ -23,8 +23,8 @@ export default function OpenedForm({
     <form action={action} className="space-y-4">
       <input type="hidden" name="id" value={itemId} />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <label className="block text-sm">
-          <span className="font-medium">Opened date</span>
+        <label className="block">
+          <span className={fieldLabel}>Opened date</span>
           <input
             name="opened_at"
             type="date"
@@ -35,12 +35,12 @@ export default function OpenedForm({
         </label>
       </div>
       {state?.error && (
-        <p className="text-sm text-red-600 dark:text-red-400">{state.error}</p>
+        <p className="text-sm text-neg">{state.error}</p>
       )}
       <button
         type="submit"
         disabled={pending}
-        className="rounded-md bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
+        className={btnPrimary}
       >
         {pending ? "Saving…" : "Update opened date"}
       </button>

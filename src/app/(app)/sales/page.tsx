@@ -4,7 +4,9 @@ import { getBundleNumbers } from "@/app/(app)/actions";
 import { formatMoney, type Item } from "@/lib/types";
 import SalesTable from "@/components/SalesTable";
 import FilterBar from "@/components/FilterBar";
-import PageStats from "@/components/PageStats";
+import PageHero from "@/components/PageHero";
+import { SalesTabs } from "@/components/SectionTabs";
+import { signedMoney } from "@/lib/ui";
 
 export const metadata = { title: "Sales · Resale Tracker" };
 
@@ -50,67 +52,70 @@ export default async function SalesPage({
     0
   );
 
+  const awaitingPayment = items.filter((i) => !i.payment_received).length;
+  const toShip = items.filter((i) => !i.shipped).length;
+
   return (
-    <div>
-      <h1 className="text-xl font-semibold">Sales</h1>
-      <PageStats
+    <div className="flex flex-col gap-4">
+      <SalesTabs active="/sales" />
+
+      <PageHero
+        title="Sales"
+        description="Items sold together are grouped — edit, mark paid or ship a bundle as one."
         stats={[
-          {
-            label: items.length === 1 ? "Sale" : "Sales",
-            value: String(items.length),
-          },
           { label: "Received", value: formatMoney(totalPayout) },
           {
             label: "Profit",
-            value: formatMoney(totalProfit),
+            value: signedMoney(totalProfit),
             tone: totalProfit >= 0 ? "pos" : "neg",
           },
         ]}
-      />
-      {unknownCount > 0 && (
-        <p className="mt-2 text-sm text-zinc-500">
-          {unknownCount} missing a payout (open the item to add it)
-        </p>
-      )}
-      <div className="mt-3">
-        <FilterBar categories={categories} showDates />
-      </div>
-      {(() => {
-        const awaitingPayment = items.filter((i) => !i.payment_received).length;
-        const toShip = items.filter((i) => !i.shipped).length;
-        if (awaitingPayment === 0 && toShip === 0) return null;
-        return (
-          <p className="mt-1 text-sm font-medium text-amber-700 dark:text-amber-400">
+      >
+        {(unknownCount > 0 || awaitingPayment > 0 || toShip > 0) && (
+          <div className="mt-2.5 flex flex-wrap gap-2 text-xs font-semibold">
             {awaitingPayment > 0 && (
-              <>
+              <Link
+                href="/pending"
+                className="rounded-xl bg-warn-surface px-3 py-2 text-warn hover:underline"
+              >
                 {awaitingPayment} awaiting payment
-                {toShip > 0 && " · "}
-              </>
+              </Link>
             )}
-            {toShip > 0 && <>{toShip} not shipped yet</>}
-          </p>
-        );
-      })()}
+            {toShip > 0 && (
+              <Link
+                href="/pending"
+                className="rounded-xl bg-warn-surface px-3 py-2 text-warn hover:underline"
+              >
+                {toShip} to ship
+              </Link>
+            )}
+            {unknownCount > 0 && (
+              <span className="rounded-xl bg-surface px-3 py-2 text-ink-2">
+                {unknownCount} missing a payout — open the item to add it
+              </span>
+            )}
+          </div>
+        )}
+      </PageHero>
 
-      {items.length === 0 ? (
-        <div className="mt-10 rounded-xl border border-dashed border-zinc-300 p-10 text-center text-sm text-zinc-500 dark:border-zinc-700">
-          {from || to || category ? (
+      <SalesTable
+        items={items}
+        bundleNumbers={bundleNumbers}
+        toolbar={<FilterBar categories={categories} showDates />}
+        empty={
+          from || to || category ? (
             "No sales match these filters."
           ) : (
             <>
               No sales yet. Open an item in{" "}
-              <Link href="/inventory" className="text-blue-600 hover:underline">
+              <Link href="/inventory" className="text-accent hover:underline">
                 Inventory
               </Link>{" "}
               and mark it sold.
             </>
-          )}
-        </div>
-      ) : (
-        <div className="mt-6">
-          <SalesTable items={items} bundleNumbers={bundleNumbers} />
-        </div>
-      )}
+          )
+        }
+      />
     </div>
   );
 }

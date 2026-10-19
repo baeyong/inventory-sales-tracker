@@ -3,9 +3,9 @@
 import { useActionState } from "react";
 import { createExpense, updateExpense, type FormState } from "@/app/(app)/actions";
 import { type Expense } from "@/lib/types";
+import { btnPrimary, field, fieldLabel } from "@/lib/ui";
 
-const inputCls =
-  "mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950";
+const inputCls = field;
 
 export default function ExpenseForm({ expense }: { expense?: Expense }) {
   const [state, action, pending] = useActionState<FormState, FormData>(
@@ -16,11 +16,11 @@ export default function ExpenseForm({ expense }: { expense?: Expense }) {
   const v = state?.values;
 
   return (
-    <form action={action} className="max-w-2xl space-y-4">
+    <form action={action} className="card max-w-3xl space-y-4 px-6 py-[22px]">
       {expense && <input type="hidden" name="id" value={expense.id} />}
 
-      <label className="block text-sm">
-        <span className="font-medium">Name</span>
+      <label className="block">
+        <span className={fieldLabel}>Name</span>
         <input
           name="name"
           required
@@ -31,8 +31,8 @@ export default function ExpenseForm({ expense }: { expense?: Expense }) {
       </label>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <label className="block text-sm">
-          <span className="font-medium">Amount</span>
+        <label className="block">
+          <span className={fieldLabel}>Amount</span>
           <input
             name="amount"
             type="number"
@@ -44,8 +44,8 @@ export default function ExpenseForm({ expense }: { expense?: Expense }) {
             className={inputCls}
           />
         </label>
-        <label className="block text-sm">
-          <span className="font-medium">Date</span>
+        <label className="block">
+          <span className={fieldLabel}>Date</span>
           <input
             name="spent_on"
             type="date"
@@ -53,8 +53,8 @@ export default function ExpenseForm({ expense }: { expense?: Expense }) {
             className={inputCls}
           />
         </label>
-        <label className="block text-sm">
-          <span className="font-medium">Source</span>
+        <label className="block">
+          <span className={fieldLabel}>Source</span>
           <input
             name="source"
             defaultValue={v?.source ?? expense?.source ?? ""}
@@ -64,8 +64,8 @@ export default function ExpenseForm({ expense }: { expense?: Expense }) {
         </label>
       </div>
 
-      <label className="block text-sm">
-        <span className="font-medium">Notes</span>
+      <label className="block">
+        <span className={fieldLabel}>Notes</span>
         <textarea
           name="notes"
           rows={2}
@@ -75,13 +75,13 @@ export default function ExpenseForm({ expense }: { expense?: Expense }) {
       </label>
 
       {state?.error && (
-        <p className="text-sm text-red-600 dark:text-red-400">{state.error}</p>
+        <p className="text-sm text-neg">{state.error}</p>
       )}
 
       <button
         type="submit"
         disabled={pending}
-        className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+        className={btnPrimary}
       >
         {pending ? "Saving…" : expense ? "Save changes" : "Add expense"}
       </button>

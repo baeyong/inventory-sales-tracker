@@ -62,7 +62,7 @@ export default function BackupButtons() {
         type="button"
         onClick={() => run("json")}
         disabled={busy !== null}
-        className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+        className="inline-flex items-center justify-center gap-2 rounded-full bg-surface px-4 py-2.5 text-[13px] font-medium text-ink shadow-pill hover:bg-inset disabled:opacity-50"
       >
         {busy === "json" ? "Preparing…" : "Download JSON (backup)"}
       </button>
@@ -70,17 +70,17 @@ export default function BackupButtons() {
         type="button"
         onClick={() => run("tax")}
         disabled={busy !== null}
-        className="rounded-md border border-blue-300 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950"
+        className="inline-flex items-center justify-center gap-2 rounded-full bg-surface px-4 py-2.5 text-[13px] font-medium text-accent shadow-pill hover:bg-inset disabled:opacity-50"
       >
         {busy === "tax" ? "Preparing…" : "Tax summary (CSV)"}
       </button>
       {status && (
-        <span className="text-sm text-emerald-600 dark:text-emerald-400">
+        <span className="text-sm text-pos">
           {status}
         </span>
       )}
       {error && (
-        <span className="text-sm text-red-600 dark:text-red-400">{error}</span>
+        <span className="text-sm text-neg">{error}</span>
       )}
     </div>
   );

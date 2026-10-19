@@ -5,7 +5,7 @@ import { createExpense, updateExpense, type FormState } from "@/app/(app)/action
 import { type Expense } from "@/lib/types";
 
 const inputCls =
-  "mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950";
+  "mt-1 w-full rounded-md border border-edge px-3 py-2 text-sm";
 
 export default function ExpenseForm({ expense }: { expense?: Expense }) {
   const [state, action, pending] = useActionState<FormState, FormData>(
@@ -75,13 +75,13 @@ export default function ExpenseForm({ expense }: { expense?: Expense }) {
       </label>
 
       {state?.error && (
-        <p className="text-sm text-red-600 dark:text-red-400">{state.error}</p>
+        <p className="text-sm text-neg">{state.error}</p>
       )}
 
       <button
         type="submit"
         disabled={pending}
-        className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+        className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent/90 disabled:opacity-50"
       >
         {pending ? "Saving…" : expense ? "Save changes" : "Add expense"}
       </button>

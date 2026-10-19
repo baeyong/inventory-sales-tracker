@@ -1,28 +1,88 @@
 @import "tailwindcss";
 
+/* Dark mode is a deliberate choice, not the OS setting: `dark:` responds to a
+   .dark class that the toggle writes. The inline script in layout.tsx restores
+   the saved choice before first paint, and falls back to the OS preference for
+   anyone who has never touched the switch — so nothing changes for them. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* The "Sky" palette. Semantic names, so a component says what a colour means
+   rather than which blue it is. Profit/loss keep green and red to themselves —
+   the brand accent is never either. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+
+  --ground: #f2f7fc; /* page behind everything */
+  --surface: #ffffff; /* cards */
+  --panel: #daeafa; /* the pale hero panel */
+  --inset: #f4f8fd; /* tinted wells inside cards */
+  --ink: #0f2740;
+  --muted: #5a7390;
+  --line: #e8f0f9;
+  --edge: #c3d7ec; /* input and button outlines — firmer than a divider */
+
+  --accent: #1660bf;
+  --on-accent: #ffffff;
+
+  --pos: #136c3c;
+  --neg: #a81f18;
+  --warn: #8a4a05;
+  --warn-surface: #fceedc;
+}
+
+.dark {
+  color-scheme: dark;
+
+  --ground: #0b1622;
+  --surface: #121f2e;
+  --panel: #16293c;
+  --inset: #0f1f30;
+  --ink: #e6eef6;
+  --muted: #93a9bf;
+  --line: #1e3147;
+  --edge: #2c4a68;
+
+  /* Lifted so it still carries white-ish text and passes contrast on a dark
+     ground; the light accent is too dark to read against #0b1622. */
+  --accent: #4d9be8;
+  --on-accent: #06121d;
+
+  --pos: #4bc07e;
+  --neg: #ff8275;
+  --warn: #e8b35c;
+  --warn-surface: #2a2113;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --color-ground: var(--ground);
+  --color-surface: var(--surface);
+  --color-panel: var(--panel);
+  --color-inset: var(--inset);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-edge: var(--edge);
+  --color-accent: var(--accent);
+  --color-on-accent: var(--on-accent);
+  --color-pos: var(--pos);
+  --color-neg: var(--neg);
+  --color-warn: var(--warn);
+  --color-warn-surface: var(--warn-surface);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-sans: var(--font-public-sans);
+  --font-display: var(--font-space-grotesk);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--ground);
+  color: var(--ink);
+  /* Was Arial — the loaded font was being overridden and never actually used. */
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+/* Figures line up in columns and don't jitter as they change. */
+.tnum {
+  font-variant-numeric: tabular-nums;
 }
 
 /* Hide the up/down spinner on number inputs that opt in with .no-spinner,
@@ -38,12 +98,10 @@ body {
 }
 
 /* The native date picker's calendar icon is dark by default and nearly
-   invisible on the dark input background — make it white in dark mode. */
+   invisible on a dark input — make it light when the dark theme is on. */
 input[type="date"]::-webkit-calendar-picker-indicator {
   cursor: pointer;
 }
-@media (prefers-color-scheme: dark) {
-  input[type="date"]::-webkit-calendar-picker-indicator {
-    filter: invert(1) brightness(1.6);
-  }
+.dark input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(1.6);
 }

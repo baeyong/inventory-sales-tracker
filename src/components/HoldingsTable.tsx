@@ -136,10 +136,10 @@ export default function HoldingsTable({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={cfg.searchPlaceholder}
-          className="w-full rounded-md border border-zinc-300 px-3 py-1.5 text-sm sm:w-64 dark:border-zinc-700 dark:bg-zinc-950"
+          className="w-full rounded-md border border-edge px-3 py-1.5 text-sm sm:w-64"
         />
         {search && (
-          <span className="text-sm text-zinc-500">
+          <span className="text-sm text-muted">
             {visible.length} of {items.length} shown
             {" · "}
             <button
@@ -152,7 +152,7 @@ export default function HoldingsTable({
           </span>
         )}
         {error && (
-          <span className="text-sm text-red-600 dark:text-red-400">{error}</span>
+          <span className="text-sm text-neg">{error}</span>
         )}
       </div>
 
@@ -168,7 +168,7 @@ export default function HoldingsTable({
         {visible.map((item) => (
           <li
             key={item.id}
-            className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950"
+            className="rounded-xl border border-line bg-surface p-4"
           >
             <div className="flex items-start justify-between gap-2">
               <Link
@@ -181,13 +181,13 @@ export default function HoldingsTable({
                 className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${
                   isCardCategory(item.category)
                     ? "bg-violet-50 text-violet-700 dark:bg-violet-950 dark:text-violet-300"
-                    : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+                    : "bg-inset text-muted"
                 }`}
               >
                 {item.category}
               </span>
             </div>
-            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-sm text-zinc-600 dark:text-zinc-300">
+            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-sm text-muted">
               <span className="font-medium">
                 {formatMoney(Number(item.purchase_price))}
               </span>
@@ -197,12 +197,12 @@ export default function HoldingsTable({
                 </span>
               )}
               {item.purchase_platform && (
-                <span className="text-zinc-500">{item.purchase_platform}</span>
+                <span className="text-muted">{item.purchase_platform}</span>
               )}
-              <span className="text-zinc-500">
+              <span className="text-muted">
                 Purchased {formatDate(item.purchase_date)}
               </span>
-              <span className="text-zinc-500">
+              <span className="text-muted">
                 {cfg.stateLabel} {formatDate(item[cfg.stateKey])}
               </span>
             </div>
@@ -211,7 +211,7 @@ export default function HoldingsTable({
                 type="button"
                 disabled={pending}
                 onClick={() => moveBack(item.id)}
-                className="text-xs text-zinc-500 hover:text-blue-600 hover:underline disabled:opacity-50"
+                className="text-xs text-muted hover:text-accent hover:underline disabled:opacity-50"
               >
                 Back to inventory
               </button>
@@ -221,13 +221,13 @@ export default function HoldingsTable({
       </ul>
 
       {/* Desktop: table. One column narrower without Est. value. */}
-      <div className="hidden overflow-x-auto rounded-xl border border-zinc-200 md:block dark:border-zinc-800">
+      <div className="hidden overflow-x-auto rounded-xl border border-line md:block">
         <table
           className={`w-full text-sm ${
             cfg.showEstValue ? "min-w-[860px]" : "min-w-[820px]"
           }`}
         >
-          <thead className="bg-zinc-50 text-left text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
+          <thead className="bg-inset text-left text-xs uppercase tracking-wide text-muted">
             <tr>
               <SortHeader label={cfg.nameLabel} sortKey="name" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
               <SortHeader label="Type" sortKey="category" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
@@ -241,9 +241,9 @@ export default function HoldingsTable({
               <th className="px-4 py-3" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+          <tbody className="divide-y divide-line">
             {visible.map((item) => (
-              <tr key={item.id} className="bg-white dark:bg-zinc-950">
+              <tr key={item.id} className="bg-surface">
                 <td className="px-4 py-3">
                   <Link
                     href={`/inventory/${item.id}`}
@@ -257,7 +257,7 @@ export default function HoldingsTable({
                     className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${
                       isCardCategory(item.category)
                         ? "bg-violet-50 text-violet-700 dark:bg-violet-950 dark:text-violet-300"
-                        : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+                        : "bg-inset text-muted"
                     }`}
                   >
                     {item.category}
@@ -271,7 +271,7 @@ export default function HoldingsTable({
                 {cfg.showEstValue && (
                   <td className="px-4 py-3 text-right">
                     {item.est_value === null ? (
-                      <span className="text-zinc-400">—</span>
+                      <span className="text-muted">—</span>
                     ) : (
                       formatMoney(Number(item.est_value))
                     )}
@@ -284,7 +284,7 @@ export default function HoldingsTable({
                     title={cfg.backTitle}
                     disabled={pending}
                     onClick={() => moveBack(item.id)}
-                    className="text-xs text-zinc-500 hover:text-blue-600 hover:underline disabled:opacity-50"
+                    className="text-xs text-muted hover:text-accent hover:underline disabled:opacity-50"
                   >
                     Back to inventory
                   </button>

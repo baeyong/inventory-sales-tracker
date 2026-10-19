@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { updateOpenedDate, type FormState } from "@/app/(app)/actions";
 
 const inputCls =
-  "mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950";
+  "mt-1 w-full rounded-md border border-edge px-3 py-2 text-sm";
 
 export default function OpenedForm({
   itemId,
@@ -35,7 +35,7 @@ export default function OpenedForm({
         </label>
       </div>
       {state?.error && (
-        <p className="text-sm text-red-600 dark:text-red-400">{state.error}</p>
+        <p className="text-sm text-neg">{state.error}</p>
       )}
       <button
         type="submit"

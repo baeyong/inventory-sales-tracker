@@ -38,10 +38,10 @@ export default function SortHeader<K extends string>({
       <button
         type="button"
         onClick={() => onSort(sortKey)}
-        className={`inline-flex w-full items-center gap-1 uppercase tracking-wide hover:text-zinc-700 dark:hover:text-zinc-300 ${justify}`}
+        className={`inline-flex w-full items-center gap-1 uppercase tracking-wide hover:text-ink ${justify}`}
       >
         {label}
-        <span className={active ? "" : "text-zinc-300 dark:text-zinc-600"}>
+        <span className={active ? "" : "text-muted"}>
           {active ? (dir === "asc" ? "▲" : "▼") : "↕"}
         </span>
       </button>

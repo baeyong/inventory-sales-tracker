@@ -44,10 +44,10 @@ export default async function InvestmentsPage() {
   return (
     <div>
       <h1 className="text-xl font-semibold">📈 Investments</h1>
-      <p className="mt-1 max-w-2xl text-sm text-zinc-500">
+      <p className="mt-1 max-w-2xl text-sm text-muted">
         Long-term holds you aren&rsquo;t planning to sell soon. They keep their
         cost and estimated value but stay out of{" "}
-        <Link href="/inventory" className="text-blue-600 hover:underline">
+        <Link href="/inventory" className="text-accent hover:underline">
           Inventory
         </Link>
         , so they don&rsquo;t clutter what you&rsquo;re actively flipping. Move
@@ -56,9 +56,9 @@ export default async function InvestmentsPage() {
       {items.length > 0 && <PageStats stats={stats} />}
 
       {items.length === 0 ? (
-        <div className="mt-10 rounded-xl border border-dashed border-zinc-300 p-10 text-center text-sm text-zinc-500 dark:border-zinc-700">
+        <div className="mt-10 rounded-xl border border-dashed border-edge p-10 text-center text-sm text-muted">
           Nothing here yet. In{" "}
-          <Link href="/inventory" className="text-blue-600 hover:underline">
+          <Link href="/inventory" className="text-accent hover:underline">
             Inventory
           </Link>
           , select what you&rsquo;re holding long-term and hit{" "}

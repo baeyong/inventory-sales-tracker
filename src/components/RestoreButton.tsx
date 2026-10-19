@@ -79,17 +79,17 @@ export default function RestoreButton() {
         type="button"
         disabled={busy}
         onClick={() => inputRef.current?.click()}
-        className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+        className="rounded-md border border-edge px-4 py-2 text-sm font-medium hover:bg-inset disabled:opacity-50"
       >
         {busy ? "Restoring…" : "Restore from JSON…"}
       </button>
       {status && (
-        <span className="text-sm text-emerald-600 dark:text-emerald-400">
+        <span className="text-sm text-pos">
           {status}
         </span>
       )}
       {error && (
-        <span className="text-sm text-red-600 dark:text-red-400">{error}</span>
+        <span className="text-sm text-neg">{error}</span>
       )}
     </div>
   );

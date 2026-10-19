@@ -3,7 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 const inputCls =
-  "rounded-md border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950";
+  "rounded-md border border-edge px-2 py-1.5 text-sm";
 
 export default function FilterBar({
   categories,
@@ -36,7 +36,7 @@ export default function FilterBar({
     <div className="flex flex-wrap items-center gap-2 text-sm">
       {showDates && (
         <>
-          <label className="flex items-center gap-1 text-zinc-500">
+          <label className="flex items-center gap-1 text-muted">
             From
             <input
               type="date"
@@ -45,7 +45,7 @@ export default function FilterBar({
               className={inputCls}
             />
           </label>
-          <label className="flex items-center gap-1 text-zinc-500">
+          <label className="flex items-center gap-1 text-muted">
             To
             <input
               type="date"
@@ -85,7 +85,7 @@ export default function FilterBar({
         <button
           type="button"
           onClick={() => router.replace(pathname)}
-          className="text-zinc-500 hover:underline"
+          className="text-muted hover:underline"
         >
           Clear filters
         </button>

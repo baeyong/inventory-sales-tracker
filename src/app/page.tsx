@@ -8,7 +8,7 @@ export default function Home() {
     <main className="flex min-h-screen items-center justify-center p-4">
       <div className="w-full max-w-lg">
         <h1 className="text-2xl font-bold">📦 Resale Tracker</h1>
-        <p className="mt-2 text-zinc-600 dark:text-zinc-400">
+        <p className="mt-2 text-muted">
           Track inventory, record sales, and see your profit — for sports cards
           and everything else you flip.
         </p>
@@ -17,13 +17,13 @@ export default function Home() {
           <div className="mt-8 flex gap-3">
             <Link
               href="/signup"
-              className="rounded-md bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
+              className="rounded-md bg-accent px-5 py-2.5 text-sm font-medium text-on-accent hover:bg-accent/90"
             >
               Get started
             </Link>
             <Link
               href="/login"
-              className="rounded-md border border-zinc-300 px-5 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              className="rounded-md border border-edge px-5 py-2.5 text-sm font-medium text-ink hover:bg-inset"
             >
               Log in
             </Link>

@@ -17,14 +17,14 @@ export default function MobileSort<K extends string>({
 }) {
   return (
     <div className="mb-3 flex items-center gap-2 md:hidden">
-      <span className="text-sm text-zinc-500">Sort</span>
+      <span className="text-sm text-muted">Sort</span>
       <select
         value={activeKey ?? ""}
         onChange={(e) => {
           const v = e.target.value;
           if (v) onSort(v as K);
         }}
-        className="rounded-md border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+        className="rounded-md border border-edge px-2 py-1.5 text-sm"
       >
         <option value="" disabled>
           Choose…
@@ -41,7 +41,7 @@ export default function MobileSort<K extends string>({
         disabled={!activeKey}
         aria-label={dir === "asc" ? "Ascending" : "Descending"}
         title={dir === "asc" ? "Ascending — tap to flip" : "Descending — tap to flip"}
-        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-zinc-300 text-zinc-600 hover:bg-zinc-100 disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-edge text-muted hover:bg-inset disabled:opacity-40"
       >
         {dir === "asc" ? "↑" : "↓"}
       </button>

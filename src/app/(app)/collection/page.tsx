@@ -35,13 +35,13 @@ export default async function CollectionPage() {
   return (
     <div>
       <h1 className="text-xl font-semibold">🗃️ Personal Collection</h1>
-      <p className="mt-1 max-w-2xl text-sm text-zinc-500">
+      <p className="mt-1 max-w-2xl text-sm text-muted">
         Keepers you aren&rsquo;t selling at all. They stay out of{" "}
-        <Link href="/inventory" className="text-blue-600 hover:underline">
+        <Link href="/inventory" className="text-accent hover:underline">
           Inventory
         </Link>{" "}
         and, unlike{" "}
-        <Link href="/investments" className="text-blue-600 hover:underline">
+        <Link href="/investments" className="text-accent hover:underline">
           Investments
         </Link>
         , their cost is reported separately from business stock in the Tax
@@ -50,9 +50,9 @@ export default async function CollectionPage() {
       {items.length > 0 && <PageStats stats={stats} />}
 
       {items.length === 0 ? (
-        <div className="mt-10 rounded-xl border border-dashed border-zinc-300 p-10 text-center text-sm text-zinc-500 dark:border-zinc-700">
+        <div className="mt-10 rounded-xl border border-dashed border-edge p-10 text-center text-sm text-muted">
           Nothing here yet. In{" "}
-          <Link href="/inventory" className="text-blue-600 hover:underline">
+          <Link href="/inventory" className="text-accent hover:underline">
             Inventory
           </Link>
           , select what you&rsquo;re keeping and hit{" "}

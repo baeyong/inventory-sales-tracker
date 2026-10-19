@@ -31,8 +31,8 @@ function ProfitTooltip({
     return null;
   }
   return (
-    <div className="rounded-md border border-zinc-200 bg-white px-3 py-2 text-xs shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
-      <div className="text-zinc-500">{label}</div>
+    <div className="rounded-md border border-line bg-surface px-3 py-2 text-xs shadow-sm">
+      <div className="text-muted">{label}</div>
       <div className="mt-0.5 font-semibold">{formatMoney(payload[0].value)}</div>
     </div>
   );
@@ -43,18 +43,10 @@ export default function ProfitChart({ data }: { data: MonthPoint[] }) {
     <div className="profit-chart h-72 w-full">
       <style>{`
         .profit-chart {
-          --viz-pos: #2a78d6;
-          --viz-neg: #e34948;
-          --viz-grid: #e7e5e4;
-          --viz-text: #52514e;
-        }
-        @media (prefers-color-scheme: dark) {
-          .profit-chart {
-            --viz-pos: #3987e5;
-            --viz-neg: #e66767;
-            --viz-grid: #333330;
-            --viz-text: #c3c2b7;
-          }
+          --viz-pos: var(--accent);
+          --viz-neg: var(--neg);
+          --viz-grid: var(--line);
+          --viz-text: var(--muted);
         }
       `}</style>
       <ResponsiveContainer width="100%" height="100%">

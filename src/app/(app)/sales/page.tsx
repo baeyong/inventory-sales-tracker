@@ -68,7 +68,7 @@ export default async function SalesPage({
         ]}
       />
       {unknownCount > 0 && (
-        <p className="mt-2 text-sm text-zinc-500">
+        <p className="mt-2 text-sm text-muted">
           {unknownCount} missing a payout (open the item to add it)
         </p>
       )}
@@ -93,13 +93,13 @@ export default async function SalesPage({
       })()}
 
       {items.length === 0 ? (
-        <div className="mt-10 rounded-xl border border-dashed border-zinc-300 p-10 text-center text-sm text-zinc-500 dark:border-zinc-700">
+        <div className="mt-10 rounded-xl border border-dashed border-edge p-10 text-center text-sm text-muted">
           {from || to || category ? (
             "No sales match these filters."
           ) : (
             <>
               No sales yet. Open an item in{" "}
-              <Link href="/inventory" className="text-blue-600 hover:underline">
+              <Link href="/inventory" className="text-accent hover:underline">
                 Inventory
               </Link>{" "}
               and mark it sold.

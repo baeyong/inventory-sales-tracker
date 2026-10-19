@@ -25,7 +25,7 @@ export default async function ExpensePage({
   return (
     <div className="space-y-10">
       <div>
-        <Link href="/expenses" className="text-sm text-zinc-500 hover:underline">
+        <Link href="/expenses" className="text-sm text-muted hover:underline">
           ← Expenses
         </Link>
         <h1 className="mt-2 text-xl font-semibold">Edit expense</h1>
@@ -34,12 +34,12 @@ export default async function ExpensePage({
         </div>
       </div>
 
-      <div className="max-w-2xl border-t border-zinc-200 pt-6 dark:border-zinc-800">
+      <div className="max-w-2xl border-t border-line pt-6">
         <form action={deleteExpense}>
           <input type="hidden" name="id" value={expense.id} />
           <button
             type="submit"
-            className="rounded-md border border-red-300 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
+            className="rounded-md border border-red-300 px-4 py-2 text-sm font-medium text-neg hover:bg-red-50 dark:border-red-900 dark:hover:bg-red-950"
           >
             Delete expense
           </button>

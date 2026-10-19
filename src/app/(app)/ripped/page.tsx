@@ -20,10 +20,10 @@ export default async function RippedPage() {
   return (
     <div>
       <h1 className="text-xl font-semibold">🎴 For the Love of the Game</h1>
-      <p className="mt-1 text-sm text-zinc-500">
+      <p className="mt-1 text-sm text-muted">
         Sealed product you&rsquo;ve ripped open — tracked at cost. Whatever you
         pulled lives in{" "}
-        <Link href="/inventory" className="text-blue-600 hover:underline">
+        <Link href="/inventory" className="text-accent hover:underline">
           Inventory
         </Link>{" "}
         as separate $0-cost items.
@@ -38,9 +38,9 @@ export default async function RippedPage() {
       )}
 
       {items.length === 0 ? (
-        <div className="mt-10 rounded-xl border border-dashed border-zinc-300 p-10 text-center text-sm text-zinc-500 dark:border-zinc-700">
+        <div className="mt-10 rounded-xl border border-dashed border-edge p-10 text-center text-sm text-muted">
           Nothing opened yet. In{" "}
-          <Link href="/inventory" className="text-blue-600 hover:underline">
+          <Link href="/inventory" className="text-accent hover:underline">
             Inventory
           </Link>
           , select a sealed item and hit <span className="font-medium">Rip open</span>.

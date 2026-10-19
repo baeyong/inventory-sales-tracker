@@ -10,9 +10,9 @@ export type Stat = {
 function toneClass(tone: Stat["tone"]): string {
   switch (tone) {
     case "pos":
-      return "text-emerald-600 dark:text-emerald-400";
+      return "text-pos";
     case "neg":
-      return "text-red-600 dark:text-red-400";
+      return "text-neg";
     case "warn":
       return "text-amber-600 dark:text-amber-400";
     default:
@@ -26,9 +26,9 @@ export default function PageStats({ stats }: { stats: Stat[] }) {
       {stats.map((s) => (
         <div
           key={s.label}
-          className="min-w-[140px] flex-1 rounded-xl border border-zinc-200 bg-white px-4 py-3 sm:flex-none dark:border-zinc-800 dark:bg-zinc-950"
+          className="min-w-[140px] flex-1 rounded-xl border border-line bg-surface px-4 py-3 sm:flex-none"
         >
-          <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+          <dt className="text-xs font-medium uppercase tracking-wide text-muted">
             {s.label}
           </dt>
           <dd className={`mt-1 text-2xl font-semibold ${toneClass(s.tone)}`}>

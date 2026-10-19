@@ -89,7 +89,7 @@ export default async function InventoryPage({
         </div>
         <Link
           href="/inventory/new"
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent/90"
         >
           + Add item
         </Link>
@@ -100,13 +100,13 @@ export default async function InventoryPage({
       </div>
 
       {items.length === 0 ? (
-        <div className="mt-10 rounded-xl border border-dashed border-zinc-300 p-10 text-center text-sm text-zinc-500 dark:border-zinc-700">
+        <div className="mt-10 rounded-xl border border-dashed border-edge p-10 text-center text-sm text-muted">
           {category || listed !== null ? (
             "No inventory matches these filters."
           ) : (
             <>
               Nothing in inventory yet. Add your first item or{" "}
-              <Link href="/data" className="text-blue-600 hover:underline">
+              <Link href="/data" className="text-accent hover:underline">
                 import a spreadsheet
               </Link>
               .

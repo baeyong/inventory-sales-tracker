@@ -268,7 +268,7 @@ export default function ImportClient() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
-        <label className="cursor-pointer rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+        <label className="cursor-pointer rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent/90">
           {parsed ? "Choose a different file" : "Choose file"}
           <input
             type="file"
@@ -283,25 +283,25 @@ export default function ImportClient() {
         <button
           type="button"
           onClick={downloadTemplate}
-          className="rounded-md border border-zinc-300 px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
+          className="rounded-md border border-edge px-4 py-2 text-sm text-muted hover:bg-inset"
         >
           Download template
         </button>
         {parsed && (
-          <span className="text-sm text-zinc-500">
+          <span className="text-sm text-muted">
             {parsed.fileName} · {parsed.rows.length} rows
           </span>
         )}
       </div>
 
       {fileError && (
-        <p className="text-sm text-red-600 dark:text-red-400">{fileError}</p>
+        <p className="text-sm text-neg">{fileError}</p>
       )}
 
       {parsed && stage === "chat" && questions[qIdx] && (
         <div className="max-w-2xl space-y-3">
-          <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
-            <p className="text-sm text-zinc-500">
+          <div className="rounded-xl border border-line bg-surface p-4">
+            <p className="text-sm text-muted">
               I matched{" "}
               {parsed.headers.length - questions.length} of{" "}
               {parsed.headers.length} columns automatically — a few need your
@@ -310,19 +310,19 @@ export default function ImportClient() {
 
             {chatLog.map((entry, i) => (
               <div key={i} className="mt-3 space-y-2">
-                <div className="max-w-[85%] rounded-lg rounded-bl-none bg-zinc-100 px-3 py-2 text-sm dark:bg-zinc-900">
+                <div className="max-w-[85%] rounded-lg rounded-bl-none bg-inset px-3 py-2 text-sm">
                   {entry.question}
                 </div>
-                <div className="ml-auto w-fit max-w-[85%] rounded-lg rounded-br-none bg-blue-600 px-3 py-2 text-sm text-white">
+                <div className="ml-auto w-fit max-w-[85%] rounded-lg rounded-br-none bg-accent px-3 py-2 text-sm text-on-accent">
                   {entry.answer}
                 </div>
               </div>
             ))}
 
-            <div className="mt-3 max-w-[85%] rounded-lg rounded-bl-none bg-zinc-100 px-3 py-2 text-sm dark:bg-zinc-900">
+            <div className="mt-3 max-w-[85%] rounded-lg rounded-bl-none bg-inset px-3 py-2 text-sm">
               <p>{questions[qIdx].question}</p>
               {parsed.samples[questions[qIdx].colIdx].length > 0 && (
-                <p className="mt-1 text-xs text-zinc-500">
+                <p className="mt-1 text-xs text-muted">
                   Sample values:{" "}
                   {parsed.samples[questions[qIdx].colIdx]
                     .map(sampleText)
@@ -337,7 +337,7 @@ export default function ImportClient() {
                   key={opt.label}
                   type="button"
                   onClick={() => answerQuestion(opt)}
-                  className="rounded-full border border-blue-600 px-4 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-600 hover:text-white dark:border-blue-400 dark:text-blue-400 dark:hover:bg-blue-600 dark:hover:text-white"
+                  className="rounded-full border border-accent px-4 py-1.5 text-sm font-medium text-accent hover:bg-accent hover:text-white"
                 >
                   {opt.label}
                 </button>
@@ -348,7 +348,7 @@ export default function ImportClient() {
           <button
             type="button"
             onClick={() => setStage("map")}
-            className="text-sm text-zinc-500 hover:underline"
+            className="text-sm text-muted hover:underline"
           >
             Skip the questions — I&apos;ll match columns myself
           </button>
@@ -359,7 +359,7 @@ export default function ImportClient() {
         <div className="space-y-4">
           <div>
             <h2 className="font-semibold">Match your columns</h2>
-            <p className="mt-1 text-sm text-zinc-500">
+            <p className="mt-1 text-sm text-muted">
               We guessed where each column belongs — fix anything that&apos;s
               wrong.{" "}
               <span className="rounded bg-amber-100 px-1 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
@@ -370,32 +370,32 @@ export default function ImportClient() {
             </p>
           </div>
 
-          <div className="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
+          <div className="overflow-x-auto rounded-xl border border-line">
             <table className="w-full min-w-[560px] text-sm">
-              <thead className="bg-zinc-50 text-left text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
+              <thead className="bg-inset text-left text-xs uppercase tracking-wide text-muted">
                 <tr>
                   <th className="px-4 py-3">Your column</th>
                   <th className="px-4 py-3">Sample values</th>
                   <th className="px-4 py-3">Imports as</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+              <tbody className="divide-y divide-line">
                 {parsed.headers.map((h, i) => (
-                  <tr key={i} className="bg-white dark:bg-zinc-950">
+                  <tr key={i} className="bg-surface">
                     <td className="px-4 py-2 font-medium">
-                      {h || <span className="text-zinc-400">(untitled)</span>}
+                      {h || <span className="text-muted">(untitled)</span>}
                     </td>
-                    <td className="px-4 py-2 text-xs text-zinc-500">
+                    <td className="px-4 py-2 text-xs text-muted">
                       {parsed.samples[i].map(sampleText).join(" · ") || "—"}
                     </td>
                     <td className="px-4 py-2">
                       <select
                         value={mapping[i] ?? ""}
                         onChange={(e) => assign(i, e.target.value)}
-                        className={`w-full max-w-56 rounded-md border px-2 py-1.5 text-sm dark:bg-zinc-950 ${
+                        className={`w-full max-w-56 rounded-md border px-2 py-1.5 text-sm ${
                           mapping[i] !== null && confidence[i] === "low"
                             ? "border-amber-400 bg-amber-50 dark:border-amber-700 dark:bg-amber-950"
-                            : "border-zinc-300 dark:border-zinc-700"
+                            : "border-edge"
                         }`}
                       >
                         <option value="">Ignore</option>
@@ -424,7 +424,7 @@ export default function ImportClient() {
             type="button"
             disabled={!hasName || !hasPrice}
             onClick={goToPreview}
-            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent/90 disabled:opacity-50"
           >
             Continue to preview
           </button>
@@ -438,16 +438,16 @@ export default function ImportClient() {
             <button
               type="button"
               onClick={() => setStage("map")}
-              className="text-sm text-blue-600 hover:underline"
+              className="text-sm text-accent hover:underline"
             >
               ← Back to column matching
             </button>
-            <label className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+            <label className="flex items-center gap-2 text-sm text-muted">
               <input
                 type="checkbox"
                 checked={inventoryOnly}
                 onChange={(e) => setInventoryOnly(e.target.checked)}
-                className="h-4 w-4 accent-blue-600"
+                className="h-4 w-4 accent-accent"
               />
               Inventory only
               {soldExcluded > 0 && ` (skipping ${soldExcluded} sold rows)`}
@@ -455,7 +455,7 @@ export default function ImportClient() {
           </div>
 
           {built.statusSkipped > 0 && (
-            <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+            <div className="rounded-lg border border-line bg-inset p-4 text-sm text-muted">
               {built.statusSkipped} row{built.statusSkipped === 1 ? "" : "s"}{" "}
               {built.statusSkipped === 1 ? "was" : "were"} skipped: returned
               items, or rows marked sold with no usable sale date.
@@ -480,14 +480,14 @@ export default function ImportClient() {
           )}
 
           {built.rows.length === 0 ? (
-            <p className="text-sm text-zinc-500">
+            <p className="text-sm text-muted">
               No importable rows with this mapping — check the column matching.
             </p>
           ) : (
             <>
-              <div className="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
+              <div className="overflow-x-auto rounded-xl border border-line">
                 <table className="w-full min-w-[640px] text-sm">
-                  <thead className="bg-zinc-50 text-left text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
+                  <thead className="bg-inset text-left text-xs uppercase tracking-wide text-muted">
                     <tr>
                       <th className="px-4 py-3">Item</th>
                       <th className="px-4 py-3">Type</th>
@@ -496,11 +496,11 @@ export default function ImportClient() {
                       <th className="px-4 py-3">Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                  <tbody className="divide-y divide-line">
                     {built.rows.slice(0, 20).map((r, i) => {
                       const d = dispositions?.[i];
                       return (
-                        <tr key={i} className="bg-white dark:bg-zinc-950">
+                        <tr key={i} className="bg-surface">
                           <td className="px-4 py-2">{r.name}</td>
                           <td className="px-4 py-2">
                             {r.category}
@@ -518,12 +518,12 @@ export default function ImportClient() {
                                 }`
                               : "In inventory"}
                             {d?.kind === "update" && (
-                              <span className="ml-2 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                              <span className="ml-2 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-pos dark:bg-emerald-950">
                                 updates existing item
                               </span>
                             )}
                             {d?.kind === "duplicate" && (
-                              <span className="ml-2 rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+                              <span className="ml-2 rounded-full bg-inset px-2 py-0.5 text-xs font-medium text-muted">
                                 already in inventory — skipped
                               </span>
                             )}
@@ -532,8 +532,8 @@ export default function ImportClient() {
                       );
                     })}
                     {built.rows.length > 20 && (
-                      <tr className="bg-white dark:bg-zinc-950">
-                        <td colSpan={5} className="px-4 py-2 text-zinc-500">
+                      <tr className="bg-surface">
+                        <td colSpan={5} className="px-4 py-2 text-muted">
                           …and {built.rows.length - 20} more rows
                         </td>
                       </tr>
@@ -543,13 +543,13 @@ export default function ImportClient() {
               </div>
 
               {serverError && (
-                <p className="text-sm text-red-600 dark:text-red-400">
+                <p className="text-sm text-neg">
                   {serverError}
                 </p>
               )}
 
               {(linkCount > 0 || dupCount > 0) && (
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                <p className="text-sm text-muted">
                   {built.rows.length - linkCount - dupCount} new item
                   {built.rows.length - linkCount - dupCount === 1 ? "" : "s"}
                   {linkCount > 0 &&
@@ -563,7 +563,7 @@ export default function ImportClient() {
                 type="button"
                 onClick={submit}
                 disabled={pending}
-                className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent/90 disabled:opacity-50"
               >
                 {pending
                   ? "Importing…"

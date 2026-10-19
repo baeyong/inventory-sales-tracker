@@ -9,15 +9,15 @@ export default function DataPage() {
     <div className="space-y-10">
       <div>
         <h1 className="text-xl font-semibold">Data</h1>
-        <p className="mt-1 max-w-2xl text-sm text-zinc-500">
+        <p className="mt-1 max-w-2xl text-sm text-muted">
           Back up everything, pull a tax summary, or import an existing
           spreadsheet.
         </p>
       </div>
 
-      <section className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
+      <section className="rounded-xl border border-line bg-surface p-5">
         <h2 className="font-semibold">Export &amp; backup</h2>
-        <p className="mb-4 mt-1 max-w-2xl text-sm text-zinc-500">
+        <p className="mb-4 mt-1 max-w-2xl text-sm text-muted">
           <span className="font-medium">Download JSON</span> is your real
           backup — a complete snapshot of everything (items and expenses) that
           Restore below can rebuild exactly. Keep a copy somewhere safe like
@@ -29,9 +29,9 @@ export default function DataPage() {
         <BackupButtons />
       </section>
 
-      <section className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
+      <section className="rounded-xl border border-line bg-surface p-5">
         <h2 className="font-semibold">Restore from backup</h2>
-        <p className="mb-4 mt-1 max-w-2xl text-sm text-zinc-500">
+        <p className="mb-4 mt-1 max-w-2xl text-sm text-muted">
           Rebuild from a <span className="font-medium">Download JSON</span> file
           — it re-creates every item and expense exactly, ripped status and
           bundles included. Safe to re-run: records with the same id are
@@ -41,9 +41,9 @@ export default function DataPage() {
         <RestoreButton />
       </section>
 
-      <section className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
+      <section className="rounded-xl border border-line bg-surface p-5">
         <h2 className="font-semibold">Import from spreadsheet</h2>
-        <p className="mb-4 mt-1 max-w-2xl text-sm text-zinc-500">
+        <p className="mb-4 mt-1 max-w-2xl text-sm text-muted">
           Upload an Excel or CSV file with your existing inventory and sales —
           any column names work. We&apos;ll guess what each column means and let
           you confirm the matches before anything is imported. Only a name and a

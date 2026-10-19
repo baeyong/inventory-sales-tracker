@@ -22,9 +22,9 @@ function LoginForm() {
 
   return (
     <main className="flex min-h-screen items-center justify-center p-4">
-      <div className="w-full max-w-sm rounded-xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="w-full max-w-sm rounded-xl border border-line bg-surface p-8 shadow-sm">
         <h1 className="text-xl font-semibold">Log in</h1>
-        <p className="mt-1 text-sm text-zinc-500">
+        <p className="mt-1 text-sm text-muted">
           Track your inventory and sales in one place.
         </p>
         <form action={action} className="mt-6 space-y-4">
@@ -35,7 +35,7 @@ function LoginForm() {
               name="email"
               required
               autoComplete="email"
-              className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950"
+              className="mt-1 w-full rounded-md border border-edge px-3 py-2"
             />
           </label>
           <label className="block text-sm">
@@ -43,7 +43,7 @@ function LoginForm() {
               <span className="font-medium">Password</span>
               <Link
                 href="/forgot-password"
-                className="text-xs font-normal text-blue-600 hover:underline"
+                className="text-xs font-normal text-accent hover:underline"
               >
                 Forgot password?
               </Link>
@@ -53,25 +53,25 @@ function LoginForm() {
               name="password"
               required
               autoComplete="current-password"
-              className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950"
+              className="mt-1 w-full rounded-md border border-edge px-3 py-2"
             />
           </label>
           {(state?.error ?? linkError) && (
-            <p className="text-sm text-red-600 dark:text-red-400">
+            <p className="text-sm text-neg">
               {state?.error ?? linkError}
             </p>
           )}
           <button
             type="submit"
             disabled={pending}
-            className="w-full rounded-md bg-blue-600 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            className="w-full rounded-md bg-accent py-2 text-sm font-medium text-on-accent hover:bg-accent/90 disabled:opacity-50"
           >
             {pending ? "Logging in…" : "Log in"}
           </button>
         </form>
-        <p className="mt-4 text-center text-sm text-zinc-500">
+        <p className="mt-4 text-center text-sm text-muted">
           No account?{" "}
-          <Link href="/signup" className="text-blue-600 hover:underline">
+          <Link href="/signup" className="text-accent hover:underline">
             Sign up
           </Link>
         </p>

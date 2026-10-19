@@ -5,7 +5,7 @@ import { markSold, type FormState } from "@/app/(app)/actions";
 import { PLATFORM_SUGGESTIONS } from "@/lib/types";
 
 const inputCls =
-  "mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950";
+  "mt-1 w-full rounded-md border border-edge px-3 py-2 text-sm";
 
 export default function SellForm({
   itemId,
@@ -41,7 +41,7 @@ export default function SellForm({
             defaultValue={v?.sale_date ?? defaultDate ?? new Date().toISOString().slice(0, 10)}
             className={inputCls}
           />
-          <span className="mt-1 block text-xs text-zinc-500">
+          <span className="mt-1 block text-xs text-muted">
             Defaults to today — click to pick the real date.
           </span>
         </label>
@@ -84,7 +84,7 @@ export default function SellForm({
         />
       </label>
       {state?.error && (
-        <p className="text-sm text-red-600 dark:text-red-400">{state.error}</p>
+        <p className="text-sm text-neg">{state.error}</p>
       )}
       <button
         type="submit"

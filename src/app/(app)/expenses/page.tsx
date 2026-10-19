@@ -21,7 +21,7 @@ export default async function ExpensesPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold">Expenses</h1>
-          <p className="mt-1 text-sm text-zinc-500">
+          <p className="mt-1 text-sm text-muted">
             Business costs that aren&rsquo;t inventory — supplies, shipping,
             fees. They feed the Tax Summary.
           </p>
@@ -39,16 +39,16 @@ export default async function ExpensesPage() {
         </div>
         <Link
           href="/expenses/new"
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent/90"
         >
           + Add expense
         </Link>
       </div>
 
       {expenses.length === 0 ? (
-        <div className="mt-10 rounded-xl border border-dashed border-zinc-300 p-10 text-center text-sm text-zinc-500 dark:border-zinc-700">
+        <div className="mt-10 rounded-xl border border-dashed border-edge p-10 text-center text-sm text-muted">
           No expenses yet. Add supplies, shipping materials, or fees with{" "}
-          <Link href="/expenses/new" className="text-blue-600 hover:underline">
+          <Link href="/expenses/new" className="text-accent hover:underline">
             + Add expense
           </Link>
           .

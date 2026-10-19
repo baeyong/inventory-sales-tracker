@@ -36,22 +36,22 @@ function StatTile({
   tone?: "pos" | "neg";
 }) {
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
-      <div className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+    <div className="rounded-xl border border-line bg-surface p-4">
+      <div className="text-xs font-medium uppercase tracking-wide text-muted">
         {label}
       </div>
       <div
         className={`mt-1 text-2xl font-semibold ${
           tone === "pos"
-            ? "text-emerald-600 dark:text-emerald-400"
+            ? "text-pos"
             : tone === "neg"
-              ? "text-red-600 dark:text-red-400"
+              ? "text-neg"
               : ""
         }`}
       >
         {value}
       </div>
-      {sub && <div className="mt-0.5 text-xs text-zinc-500">{sub}</div>}
+      {sub && <div className="mt-0.5 text-xs text-muted">{sub}</div>}
     </div>
   );
 }
@@ -228,13 +228,13 @@ export default async function DashboardPage() {
         />
       </div>
 
-      <div className="mt-6 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+      <div className="mt-6 rounded-xl border border-line bg-surface p-4">
         <h2 className="font-semibold">Monthly profit</h2>
-        <p className="mb-4 text-xs text-zinc-500">
+        <p className="mb-4 text-xs text-muted">
           Net profit on items sold each month, last 12 months
         </p>
         {sold.length === 0 ? (
-          <p className="py-12 text-center text-sm text-zinc-500">
+          <p className="py-12 text-center text-sm text-muted">
             No sales recorded yet — profits will show up here.
           </p>
         ) : (
@@ -243,11 +243,11 @@ export default async function DashboardPage() {
       </div>
 
       {categoryRows.length > 0 && (
-        <div className="mt-6 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="mt-6 rounded-xl border border-line bg-surface p-4">
           <h2 className="font-semibold">By category</h2>
           <div className="mt-3 overflow-x-auto">
             <table className="w-full min-w-[560px] text-sm">
-              <thead className="text-left text-xs uppercase tracking-wide text-zinc-500">
+              <thead className="text-left text-xs uppercase tracking-wide text-muted">
                 <tr>
                   <th className="py-2 pr-4">Category</th>
                   <th className="py-2 pr-4 text-right">In stock</th>
@@ -257,7 +257,7 @@ export default async function DashboardPage() {
                   <th className="py-2 text-right">Profit</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+              <tbody className="divide-y divide-line">
                 {categoryRows.map(([cat, r]) => (
                   <tr key={cat}>
                     <td className="py-2 pr-4 font-medium">{cat}</td>
@@ -272,8 +272,8 @@ export default async function DashboardPage() {
                     <td
                       className={`py-2 text-right font-medium ${
                         r.catProfit >= 0
-                          ? "text-emerald-600 dark:text-emerald-400"
-                          : "text-red-600 dark:text-red-400"
+                          ? "text-pos"
+                          : "text-neg"
                       }`}
                     >
                       {formatMoney(r.catProfit)}
@@ -287,14 +287,14 @@ export default async function DashboardPage() {
       )}
 
       {recentSales.length > 0 && (
-        <div className="mt-6 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="mt-6 rounded-xl border border-line bg-surface p-4">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold">Recent sales</h2>
-            <Link href="/sales" className="text-sm text-blue-600 hover:underline">
+            <Link href="/sales" className="text-sm text-accent hover:underline">
               View all
             </Link>
           </div>
-          <ul className="mt-3 divide-y divide-zinc-100 text-sm dark:divide-zinc-800">
+          <ul className="mt-3 divide-y divide-line text-sm">
             {recentSales.map((i) => {
               const p =
                 i.sale_payout === null
@@ -306,16 +306,16 @@ export default async function DashboardPage() {
                   className="flex items-center justify-between gap-4 py-2"
                 >
                   <span className="min-w-0 truncate">{i.name}</span>
-                  <span className="shrink-0 text-zinc-500">
+                  <span className="shrink-0 text-muted">
                     {i.sale_platform ?? "—"}
                   </span>
                   <span
                     className={`shrink-0 font-medium ${
                       p === null
-                        ? "text-zinc-400"
+                        ? "text-muted"
                         : p >= 0
-                          ? "text-emerald-600 dark:text-emerald-400"
-                          : "text-red-600 dark:text-red-400"
+                          ? "text-pos"
+                          : "text-neg"
                     }`}
                   >
                     {p === null ? "—" : formatMoney(p)}

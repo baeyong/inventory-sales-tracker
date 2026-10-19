@@ -13,7 +13,7 @@ export default async function NewItemPage() {
 
   return (
     <div>
-      <Link href="/inventory" className="text-sm text-zinc-500 hover:underline">
+      <Link href="/inventory" className="text-sm text-muted hover:underline">
         ← Inventory
       </Link>
       <h1 className="mt-2 text-xl font-semibold">Add item</h1>

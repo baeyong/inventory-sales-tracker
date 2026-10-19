@@ -269,10 +269,10 @@ export default function SalesTable({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search sales…"
-          className="w-full rounded-md border border-zinc-300 px-3 py-1.5 text-sm sm:w-64 dark:border-zinc-700 dark:bg-zinc-950"
+          className="w-full rounded-md border border-edge px-3 py-1.5 text-sm sm:w-64"
         />
         {search && (
-          <span className="text-sm text-zinc-500">
+          <span className="text-sm text-muted">
             {visible.length} of {items.length} shown
             {" · "}
             <button
@@ -286,17 +286,17 @@ export default function SalesTable({
         )}
       </div>
       {selected.size > 0 && (
-        <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-line bg-inset px-4 py-2 text-sm">
           <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <span className="font-medium">{selected.size} selected</span>
-            <span className="text-zinc-500">
+            <span className="text-muted">
               {formatMoney(pickedCost)} cost · {formatMoney(pickedPayout)} payout
               {" · "}
               <span
                 className={`font-medium ${
                   pickedProfit >= 0
-                    ? "text-emerald-600 dark:text-emerald-400"
-                    : "text-red-600 dark:text-red-400"
+                    ? "text-pos"
+                    : "text-neg"
                 }`}
               >
                 {formatMoney(pickedProfit)} profit
@@ -311,7 +311,7 @@ export default function SalesTable({
               onKeyDown={(e) => e.key === "Enter" && applyCategory()}
               list="bulk-categories-sales"
               placeholder="Category…"
-              className="w-36 rounded-md border border-zinc-300 px-2 py-1.5 dark:border-zinc-700 dark:bg-zinc-950"
+              className="w-36 rounded-md border border-edge px-2 py-1.5"
             />
             <datalist id="bulk-categories-sales">
               {categorySuggestions.map((c) => (
@@ -322,7 +322,7 @@ export default function SalesTable({
               type="button"
               onClick={applyCategory}
               disabled={pending || category.trim() === ""}
-              className="rounded-md border border-zinc-300 px-3 py-1.5 font-medium hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+              className="rounded-md border border-edge px-3 py-1.5 font-medium hover:bg-inset disabled:opacity-50"
             >
               Set category
             </button>
@@ -331,7 +331,7 @@ export default function SalesTable({
             type="button"
             onClick={openEdit}
             disabled={pending}
-            className="rounded-md border border-blue-300 px-3 py-1.5 font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950"
+            className="rounded-md border border-accent px-3 py-1.5 font-medium text-accent hover:bg-panel disabled:opacity-50"
           >
             Edit sale details
           </button>
@@ -339,7 +339,7 @@ export default function SalesTable({
             type="button"
             onClick={() => applyFulfillment("payment_received", true)}
             disabled={pending}
-            className="rounded-md border border-zinc-300 px-3 py-1.5 font-medium hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+            className="rounded-md border border-edge px-3 py-1.5 font-medium hover:bg-inset disabled:opacity-50"
           >
             Mark paid
           </button>
@@ -347,7 +347,7 @@ export default function SalesTable({
             type="button"
             onClick={() => applyFulfillment("shipped", true)}
             disabled={pending}
-            className="rounded-md border border-zinc-300 px-3 py-1.5 font-medium hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+            className="rounded-md border border-edge px-3 py-1.5 font-medium hover:bg-inset disabled:opacity-50"
           >
             Mark shipped
           </button>
@@ -355,19 +355,19 @@ export default function SalesTable({
             type="button"
             onClick={() => setDialogIds([...selected])}
             disabled={pending}
-            className="rounded-md border border-red-300 px-3 py-1.5 font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
+            className="rounded-md border border-red-300 px-3 py-1.5 font-medium text-neg hover:bg-red-50 disabled:opacity-50 dark:border-red-900 dark:hover:bg-red-950"
           >
             Delete selected
           </button>
           <button
             type="button"
             onClick={() => setSelected(new Set())}
-            className="text-zinc-500 hover:underline"
+            className="text-muted hover:underline"
           >
             Clear
           </button>
           {error && (
-            <span className="text-red-600 dark:text-red-400">{error}</span>
+            <span className="text-neg">{error}</span>
           )}
         </div>
       )}
@@ -400,7 +400,7 @@ export default function SalesTable({
           return (
             <li
               key={item.id}
-              className={`rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950 ${
+              className={`rounded-xl border border-line bg-surface p-4 ${
                 meta ? `border-l-4 ${meta.color.stripe}` : ""
               }`}
             >
@@ -412,7 +412,7 @@ export default function SalesTable({
                   }
                   checked={allSel}
                   onChange={() => toggleSelection(members)}
-                  className="mt-1 h-5 w-5 shrink-0 accent-blue-600"
+                  className="mt-1 h-5 w-5 shrink-0 accent-accent"
                 />
                 <div className="min-w-0 flex-1">
                   {meta && (
@@ -434,7 +434,7 @@ export default function SalesTable({
                           key={m.id}
                           className={
                             meta
-                              ? "border-t border-zinc-100 pt-2 first:border-t-0 first:pt-0 dark:border-zinc-800"
+                              ? "border-t border-line pt-2 first:border-t-0 first:pt-0"
                               : ""
                           }
                         >
@@ -449,23 +449,23 @@ export default function SalesTable({
                               className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${
                                 isCardCategory(m.category)
                                   ? "bg-violet-50 text-violet-700 dark:bg-violet-950 dark:text-violet-300"
-                                  : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+                                  : "bg-inset text-muted"
                               }`}
                             >
                               {m.category}
                             </span>
                           </div>
                           {m.buyer && (
-                            <span className="block text-xs text-zinc-500">
+                            <span className="block text-xs text-muted">
                               Buyer: {m.buyer}
                             </span>
                           )}
                           <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-sm">
-                            <span className="text-zinc-500">
+                            <span className="text-muted">
                               {formatDate(m.sale_date)}
                             </span>
                             {m.purchase_platform && (
-                              <span className="text-zinc-500">
+                              <span className="text-muted">
                                 {m.purchase_platform}
                               </span>
                             )}
@@ -479,10 +479,10 @@ export default function SalesTable({
                             <span
                               className={
                                 profit === null
-                                  ? "text-zinc-400"
+                                  ? "text-muted"
                                   : profit >= 0
-                                    ? "font-medium text-emerald-600 dark:text-emerald-400"
-                                    : "font-medium text-red-600 dark:text-red-400"
+                                    ? "font-medium text-pos"
+                                    : "font-medium text-neg"
                               }
                             >
                               {profit === null
@@ -498,7 +498,7 @@ export default function SalesTable({
                     <div className="mt-2 text-sm font-semibold">
                       Bundle total {formatMoney(bt.total)}
                       {bt.known < bt.count && (
-                        <span className="ml-1 text-xs font-normal text-zinc-500">
+                        <span className="ml-1 text-xs font-normal text-muted">
                           so far
                         </span>
                       )}
@@ -515,7 +515,7 @@ export default function SalesTable({
                         }
                         className="h-4 w-4 accent-emerald-600"
                       />
-                      <span className="text-zinc-500">Paid</span>
+                      <span className="text-muted">Paid</span>
                     </label>
                     <label className="flex items-center gap-2 text-sm">
                       <input
@@ -525,13 +525,13 @@ export default function SalesTable({
                         onChange={() => setFlag(members, "shipped", !allShipped)}
                         className="h-4 w-4 accent-emerald-600"
                       />
-                      <span className="text-zinc-500">Shipped</span>
+                      <span className="text-muted">Shipped</span>
                     </label>
                     <button
                       type="button"
                       disabled={pending}
                       onClick={() => run(bulkMarkUnsold, members.map((m) => m.id))}
-                      className="ml-auto text-xs text-zinc-500 hover:text-blue-600 hover:underline disabled:opacity-50"
+                      className="ml-auto text-xs text-muted hover:text-accent hover:underline disabled:opacity-50"
                     >
                       Undo sale
                     </button>
@@ -544,9 +544,9 @@ export default function SalesTable({
       </ul>
 
       {/* Desktop: table */}
-      <div className="hidden overflow-x-auto rounded-xl border border-zinc-200 md:block dark:border-zinc-800">
+      <div className="hidden overflow-x-auto rounded-xl border border-line md:block">
         <table className="w-full min-w-[880px] text-sm">
-          <thead className="bg-zinc-50 text-left text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
+          <thead className="bg-inset text-left text-xs uppercase tracking-wide text-muted">
             <tr>
               <th className="w-10 px-4 py-3">
                 <input
@@ -554,7 +554,7 @@ export default function SalesTable({
                   aria-label="Select all"
                   checked={allSelected}
                   onChange={toggleAll}
-                  className="accent-blue-600"
+                  className="accent-accent"
                 />
               </th>
               <SortHeader label="Item" sortKey="name" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
@@ -568,7 +568,7 @@ export default function SalesTable({
               <th className="px-4 py-3" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+          <tbody className="divide-y divide-line">
             {visible.map((item) => {
               const profit =
                 item.sale_payout === null
@@ -599,8 +599,8 @@ export default function SalesTable({
                 <tr
                   className={
                     meta
-                      ? "bg-zinc-50/70 dark:bg-zinc-900/40"
-                      : "bg-white dark:bg-zinc-950"
+                      ? "bg-inset"
+                      : "bg-surface"
                   }
                 >
                   {isFirst && (
@@ -619,7 +619,7 @@ export default function SalesTable({
                         }
                         checked={allSel}
                         onChange={() => toggleSelection(members)}
-                        className="accent-blue-600"
+                        className="accent-accent"
                       />
                     </td>
                   )}
@@ -631,7 +631,7 @@ export default function SalesTable({
                       {item.name}
                     </Link>
                     {item.quantity > 1 && (
-                      <span className="ml-1 text-xs text-zinc-500">
+                      <span className="ml-1 text-xs text-muted">
                         ×{item.quantity}
                       </span>
                     )}
@@ -639,13 +639,13 @@ export default function SalesTable({
                       className={`ml-2 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${
                         isCardCategory(item.category)
                           ? "bg-violet-50 text-violet-700 dark:bg-violet-950 dark:text-violet-300"
-                          : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+                          : "bg-inset text-muted"
                       }`}
                     >
                       {item.category}
                     </span>
                     {item.buyer && (
-                      <span className="mt-0.5 block text-xs text-zinc-500">
+                      <span className="mt-0.5 block text-xs text-muted">
                         Buyer: {item.buyer}
                       </span>
                     )}
@@ -676,10 +676,10 @@ export default function SalesTable({
                   <td
                     className={`px-4 py-3 text-right font-medium ${
                       profit === null
-                        ? "text-zinc-400"
+                        ? "text-muted"
                         : profit >= 0
-                          ? "text-emerald-600 dark:text-emerald-400"
-                          : "text-red-600 dark:text-red-400"
+                          ? "text-pos"
+                          : "text-neg"
                     }`}
                   >
                     {profit === null ? "—" : formatMoney(profit)}
@@ -738,7 +738,7 @@ export default function SalesTable({
                         onClick={() =>
                           run(bulkMarkUnsold, members.map((m) => m.id))
                         }
-                        className="text-xs text-zinc-500 hover:text-blue-600 hover:underline disabled:opacity-50"
+                        className="text-xs text-muted hover:text-accent hover:underline disabled:opacity-50"
                       >
                         Undo sale
                       </button>
@@ -748,10 +748,10 @@ export default function SalesTable({
                 {/* Closes the bundle block: a subtotal that belongs to the
                     group, not to the last item's record. */}
                 {isLast && hasSubtotal && (
-                  <tr className="bg-zinc-50/70 dark:bg-zinc-900/40">
+                  <tr className="bg-inset">
                     <td
                       colSpan={4}
-                      className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wide text-zinc-500"
+                      className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wide text-muted"
                     >
                       Bundle {meta!.num} total
                     </td>
@@ -767,7 +767,7 @@ export default function SalesTable({
                     >
                       {formatMoney(bundleTotal!.total)}
                       {bundleTotal!.known < bundleTotal!.count && (
-                        <span className="ml-1 text-xs font-normal text-zinc-500">
+                        <span className="ml-1 text-xs font-normal text-muted">
                           so far
                         </span>
                       )}
@@ -784,32 +784,32 @@ export default function SalesTable({
 
       {editing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-6 shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="w-full max-w-md rounded-xl border border-line bg-surface p-6 shadow-lg">
             <h2 className="text-lg font-semibold">
               Edit {selected.size} sale{selected.size === 1 ? "" : "s"}
             </h2>
-            <p className="mt-1 text-sm text-zinc-500">
+            <p className="mt-1 text-sm text-muted">
               Applies to every selected item. Leave the total blank to keep each
               item&rsquo;s current payout.
             </p>
             <div className="mt-4 space-y-3 text-sm">
               <label className="block">
-                <span className="text-zinc-600 dark:text-zinc-400">Sale date</span>
+                <span className="text-muted">Sale date</span>
                 <input
                   type="date"
                   value={editDate}
                   onChange={(e) => setEditDate(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950"
+                  className="mt-1 w-full rounded-md border border-edge px-3 py-2"
                 />
               </label>
               <label className="block">
-                <span className="text-zinc-600 dark:text-zinc-400">Platform</span>
+                <span className="text-muted">Platform</span>
                 <input
                   value={editPlatform}
                   onChange={(e) => setEditPlatform(e.target.value)}
                   list="sales-edit-platforms"
                   placeholder="e.g. eBay"
-                  className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950"
+                  className="mt-1 w-full rounded-md border border-edge px-3 py-2"
                 />
                 <datalist id="sales-edit-platforms">
                   {platformSuggestions.map((p) => (
@@ -818,18 +818,18 @@ export default function SalesTable({
                 </datalist>
               </label>
               <label className="block">
-                <span className="text-zinc-600 dark:text-zinc-400">
+                <span className="text-muted">
                   Buyer / username
                 </span>
                 <input
                   value={editBuyer}
                   onChange={(e) => setEditBuyer(e.target.value)}
                   placeholder="Optional"
-                  className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950"
+                  className="mt-1 w-full rounded-md border border-edge px-3 py-2"
                 />
               </label>
               <label className="block">
-                <span className="text-zinc-600 dark:text-zinc-400">
+                <span className="text-muted">
                   Total payout {selected.size > 1 && "(split evenly)"}
                 </span>
                 <input
@@ -838,7 +838,7 @@ export default function SalesTable({
                   value={editTotal}
                   onChange={(e) => setEditTotal(e.target.value)}
                   placeholder="Leave blank to keep current"
-                  className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950"
+                  className="mt-1 w-full rounded-md border border-edge px-3 py-2"
                 />
               </label>
               {selected.size > 1 && (
@@ -847,9 +847,9 @@ export default function SalesTable({
                     type="checkbox"
                     checked={editBundle}
                     onChange={(e) => setEditBundle(e.target.checked)}
-                    className="h-4 w-4 accent-blue-600"
+                    className="h-4 w-4 accent-accent"
                   />
-                  <span className="text-zinc-600 dark:text-zinc-400">
+                  <span className="text-muted">
                     Keep these grouped as one bundle
                   </span>
                 </label>
@@ -860,7 +860,7 @@ export default function SalesTable({
                 type="button"
                 disabled={pending}
                 onClick={() => setEditing(false)}
-                className="rounded-md px-4 py-2 text-sm text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                className="rounded-md px-4 py-2 text-sm text-muted hover:bg-inset"
               >
                 Cancel
               </button>
@@ -868,13 +868,13 @@ export default function SalesTable({
                 type="button"
                 disabled={pending}
                 onClick={applyEdit}
-                className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent/90 disabled:opacity-50"
               >
                 {pending ? "Saving…" : "Save changes"}
               </button>
             </div>
             {error && (
-              <p className="mt-3 text-sm text-red-600 dark:text-red-400">
+              <p className="mt-3 text-sm text-neg">
                 {error}
               </p>
             )}
@@ -884,11 +884,11 @@ export default function SalesTable({
 
       {dialogIds && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-6 shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="w-full max-w-md rounded-xl border border-line bg-surface p-6 shadow-lg">
             <h2 className="text-lg font-semibold">
               Delete {dialogIds.length} sale{dialogIds.length === 1 ? "" : "s"}?
             </h2>
-            <p className="mt-2 text-sm text-zinc-500">
+            <p className="mt-2 text-sm text-muted">
               Do you want the item{dialogIds.length === 1 ? "" : "s"} deleted
               from inventory as well, or just the sale record removed?
             </p>
@@ -905,7 +905,7 @@ export default function SalesTable({
                 type="button"
                 disabled={pending}
                 onClick={() => run(bulkMarkUnsold, dialogIds)}
-                className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+                className="rounded-md border border-edge px-4 py-2 text-sm font-medium hover:bg-inset disabled:opacity-50"
               >
                 Keep in inventory (remove sale info only)
               </button>
@@ -913,13 +913,13 @@ export default function SalesTable({
                 type="button"
                 disabled={pending}
                 onClick={() => setDialogIds(null)}
-                className="rounded-md px-4 py-2 text-sm text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                className="rounded-md px-4 py-2 text-sm text-muted hover:bg-inset"
               >
                 Cancel
               </button>
             </div>
             {error && (
-              <p className="mt-3 text-sm text-red-600 dark:text-red-400">
+              <p className="mt-3 text-sm text-neg">
                 {error}
               </p>
             )}

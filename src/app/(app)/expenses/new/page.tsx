@@ -6,7 +6,7 @@ export const metadata = { title: "Add expense · Resale Tracker" };
 export default function NewExpensePage() {
   return (
     <div>
-      <Link href="/expenses" className="text-sm text-zinc-500 hover:underline">
+      <Link href="/expenses" className="text-sm text-muted hover:underline">
         ← Expenses
       </Link>
       <h1 className="mt-2 text-xl font-semibold">Add expense</h1>

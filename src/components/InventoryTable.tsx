@@ -291,7 +291,7 @@ export default function InventoryTable({ items }: { items: Item[] }) {
             type="button"
             onClick={saveEdits}
             disabled={pending || invalidCount > 0}
-            className="rounded-md bg-blue-600 px-3 py-1.5 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            className="rounded-md bg-accent px-3 py-1.5 font-medium text-on-accent hover:bg-accent/90 disabled:opacity-50"
           >
             {pending ? "Saving…" : "Save changes"}
           </button>
@@ -299,17 +299,17 @@ export default function InventoryTable({ items }: { items: Item[] }) {
             type="button"
             onClick={() => setEdits({})}
             disabled={pending}
-            className="text-zinc-600 hover:underline disabled:opacity-50 dark:text-zinc-300"
+            className="text-muted hover:underline disabled:opacity-50"
           >
             Discard
           </button>
           {invalidCount > 0 && (
-            <span className="text-red-600 dark:text-red-400">
+            <span className="text-neg">
               Fix {invalidCount} invalid value{invalidCount === 1 ? "" : "s"}
             </span>
           )}
           {error && (
-            <span className="text-red-600 dark:text-red-400">{error}</span>
+            <span className="text-neg">{error}</span>
           )}
         </div>
       )}
@@ -318,10 +318,10 @@ export default function InventoryTable({ items }: { items: Item[] }) {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search items…"
-          className="w-full rounded-md border border-zinc-300 px-3 py-1.5 text-sm sm:w-64 dark:border-zinc-700 dark:bg-zinc-950"
+          className="w-full rounded-md border border-edge px-3 py-1.5 text-sm sm:w-64"
         />
         {search && (
-          <span className="text-sm text-zinc-500">
+          <span className="text-sm text-muted">
             {visible.length} of {items.length} shown
             {" · "}
             <button
@@ -335,10 +335,10 @@ export default function InventoryTable({ items }: { items: Item[] }) {
         )}
       </div>
       {selected.size > 0 && (
-        <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-line bg-inset px-4 py-2 text-sm">
           <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <span className="font-medium">{selected.size} selected</span>
-            <span className="text-zinc-500">{formatMoney(pickedCost)} cost</span>
+            <span className="text-muted">{formatMoney(pickedCost)} cost</span>
           </span>
           <span className="flex items-center gap-1">
             <input
@@ -347,7 +347,7 @@ export default function InventoryTable({ items }: { items: Item[] }) {
               onKeyDown={(e) => e.key === "Enter" && applyCategory()}
               list="bulk-categories"
               placeholder="Category…"
-              className="w-36 rounded-md border border-zinc-300 px-2 py-1.5 dark:border-zinc-700 dark:bg-zinc-950"
+              className="w-36 rounded-md border border-edge px-2 py-1.5"
             />
             <datalist id="bulk-categories">
               {categorySuggestions.map((c) => (
@@ -358,7 +358,7 @@ export default function InventoryTable({ items }: { items: Item[] }) {
               type="button"
               onClick={applyCategory}
               disabled={pending || category.trim() === ""}
-              className="rounded-md border border-zinc-300 px-3 py-1.5 font-medium hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+              className="rounded-md border border-edge px-3 py-1.5 font-medium hover:bg-inset disabled:opacity-50"
             >
               Set category
             </button>
@@ -389,7 +389,7 @@ export default function InventoryTable({ items }: { items: Item[] }) {
             type="button"
             onClick={moveToInvestments}
             disabled={pending}
-            className="rounded-md border border-blue-300 px-3 py-1.5 font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950"
+            className="rounded-md border border-accent px-3 py-1.5 font-medium text-accent hover:bg-panel disabled:opacity-50"
           >
             Move to investments
           </button>
@@ -405,19 +405,19 @@ export default function InventoryTable({ items }: { items: Item[] }) {
             type="button"
             onClick={deleteSelected}
             disabled={pending}
-            className="rounded-md border border-red-300 px-3 py-1.5 font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
+            className="rounded-md border border-red-300 px-3 py-1.5 font-medium text-neg hover:bg-red-50 disabled:opacity-50 dark:border-red-900 dark:hover:bg-red-950"
           >
             {pending ? "Working…" : "Delete selected"}
           </button>
           <button
             type="button"
             onClick={() => setSelected(new Set())}
-            className="text-zinc-500 hover:underline"
+            className="text-muted hover:underline"
           >
             Clear
           </button>
           {error && (
-            <span className="text-red-600 dark:text-red-400">{error}</span>
+            <span className="text-neg">{error}</span>
           )}
         </div>
       )}
@@ -440,7 +440,7 @@ export default function InventoryTable({ items }: { items: Item[] }) {
         {visible.map((item) => (
           <li
             key={item.id}
-            className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950"
+            className="rounded-xl border border-line bg-surface p-4"
           >
             <div className="flex items-start gap-3">
               <input
@@ -448,7 +448,7 @@ export default function InventoryTable({ items }: { items: Item[] }) {
                 aria-label={`Select ${item.name}`}
                 checked={selected.has(item.id)}
                 onChange={() => toggle(item.id)}
-                className="mt-1 h-5 w-5 shrink-0 accent-blue-600"
+                className="mt-1 h-5 w-5 shrink-0 accent-accent"
               />
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-2">
@@ -462,18 +462,18 @@ export default function InventoryTable({ items }: { items: Item[] }) {
                     className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${
                       isCardCategory(item.category)
                         ? "bg-violet-50 text-violet-700 dark:bg-violet-950 dark:text-violet-300"
-                        : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+                        : "bg-inset text-muted"
                     }`}
                   >
                     {item.category}
                   </span>
                 </div>
                 {cardDetails(item) && (
-                  <span className="mt-0.5 block text-xs text-zinc-500">
+                  <span className="mt-0.5 block text-xs text-muted">
                     {cardDetails(item)}
                   </span>
                 )}
-                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-zinc-600 dark:text-zinc-300">
+                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted">
                   <span className="font-medium">
                     {formatMoney(Number(item.purchase_price))}
                   </span>
@@ -484,7 +484,7 @@ export default function InventoryTable({ items }: { items: Item[] }) {
                   )}
                 </div>
                 <div className="mt-2 flex items-center gap-2 text-sm">
-                  <span className="text-zinc-500">Est. value</span>
+                  <span className="text-muted">Est. value</span>
                   <input
                     type="number"
                     step="0.01"
@@ -494,10 +494,10 @@ export default function InventoryTable({ items }: { items: Item[] }) {
                     onChange={(e) => setEst(item.id, e.target.value)}
                     placeholder="—"
                     aria-label={`Estimated value for ${item.name}`}
-                    className={`no-spinner w-28 rounded-md border px-2 py-1 text-right dark:bg-zinc-950 ${
+                    className={`no-spinner w-28 rounded-md border px-2 py-1 text-right ${
                       itemDirty(item)
                         ? "border-amber-400 ring-1 ring-amber-300 dark:border-amber-600 dark:ring-amber-800"
-                        : "border-zinc-300 dark:border-zinc-700"
+                        : "border-edge"
                     }`}
                   />
                 </div>
@@ -510,7 +510,7 @@ export default function InventoryTable({ items }: { items: Item[] }) {
                     onChange={() => toggleListed(item)}
                     className="h-4 w-4 accent-emerald-600"
                   />
-                  <span className="text-zinc-500">Listed for sale</span>
+                  <span className="text-muted">Listed for sale</span>
                 </label>
               </div>
             </div>
@@ -519,7 +519,7 @@ export default function InventoryTable({ items }: { items: Item[] }) {
                 href={marketLink(item).url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-md border border-zinc-300 px-3 py-2 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                className="rounded-md border border-edge px-3 py-2 text-xs font-medium text-muted hover:bg-inset"
               >
                 Value ↗
               </a>
@@ -531,7 +531,7 @@ export default function InventoryTable({ items }: { items: Item[] }) {
               </Link>
               <Link
                 href={`/inventory/${item.id}`}
-                className="rounded-md border border-zinc-300 px-3 py-2 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                className="rounded-md border border-edge px-3 py-2 text-xs font-medium text-muted hover:bg-inset"
               >
                 Edit
               </Link>
@@ -541,9 +541,9 @@ export default function InventoryTable({ items }: { items: Item[] }) {
       </ul>
 
       {/* Desktop: table */}
-      <div className="hidden overflow-x-auto rounded-xl border border-zinc-200 md:block dark:border-zinc-800">
+      <div className="hidden overflow-x-auto rounded-xl border border-line md:block">
         <table className="w-full min-w-[860px] text-sm">
-          <thead className="bg-zinc-50 text-left text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
+          <thead className="bg-inset text-left text-xs uppercase tracking-wide text-muted">
             <tr>
               <th className="w-10 px-4 py-3">
                 <input
@@ -551,7 +551,7 @@ export default function InventoryTable({ items }: { items: Item[] }) {
                   aria-label="Select all"
                   checked={allSelected}
                   onChange={toggleAll}
-                  className="accent-blue-600"
+                  className="accent-accent"
                 />
               </th>
               <SortHeader label="Item" sortKey="name" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
@@ -565,22 +565,22 @@ export default function InventoryTable({ items }: { items: Item[] }) {
               <th className="px-4 py-3" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+          <tbody className="divide-y divide-line">
             {visible.map((item) => (
-              <tr key={item.id} className="bg-white dark:bg-zinc-950">
+              <tr key={item.id} className="bg-surface">
                 <td className="px-4 py-3">
                   <input
                     type="checkbox"
                     aria-label={`Select ${item.name}`}
                     checked={selected.has(item.id)}
                     onChange={() => toggle(item.id)}
-                    className="accent-blue-600"
+                    className="accent-accent"
                   />
                 </td>
                 <td className="px-4 py-3">
                   <span className="font-medium">{item.name}</span>
                   {cardDetails(item) && (
-                    <span className="block text-xs text-zinc-500">
+                    <span className="block text-xs text-muted">
                       {cardDetails(item)}
                     </span>
                   )}
@@ -590,7 +590,7 @@ export default function InventoryTable({ items }: { items: Item[] }) {
                     className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${
                       isCardCategory(item.category)
                         ? "bg-violet-50 text-violet-700 dark:bg-violet-950 dark:text-violet-300"
-                        : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+                        : "bg-inset text-muted"
                     }`}
                   >
                     {item.category}
@@ -611,10 +611,10 @@ export default function InventoryTable({ items }: { items: Item[] }) {
                     onChange={(e) => setEst(item.id, e.target.value)}
                     placeholder="—"
                     aria-label={`Estimated value for ${item.name}`}
-                    className={`no-spinner w-24 rounded-md border px-2 py-1 text-right text-sm dark:bg-zinc-950 ${
+                    className={`no-spinner w-24 rounded-md border px-2 py-1 text-right text-sm ${
                       itemDirty(item)
                         ? "border-amber-400 ring-1 ring-amber-300 dark:border-amber-600 dark:ring-amber-800"
-                        : "border-zinc-300 dark:border-zinc-700"
+                        : "border-edge"
                     }`}
                   />
                 </td>
@@ -636,7 +636,7 @@ export default function InventoryTable({ items }: { items: Item[] }) {
                       target="_blank"
                       rel="noopener noreferrer"
                       title={`Look up market value on ${marketLink(item).label}`}
-                      className="rounded-md border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                      className="rounded-md border border-edge px-3 py-1.5 text-xs font-medium text-muted hover:bg-inset"
                     >
                       Value ↗
                     </a>
@@ -648,7 +648,7 @@ export default function InventoryTable({ items }: { items: Item[] }) {
                     </Link>
                     <Link
                       href={`/inventory/${item.id}`}
-                      className="rounded-md border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                      className="rounded-md border border-edge px-3 py-1.5 text-xs font-medium text-muted hover:bg-inset"
                     >
                       Edit
                     </Link>
@@ -662,11 +662,11 @@ export default function InventoryTable({ items }: { items: Item[] }) {
 
       {ripOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-6 shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="w-full max-w-md rounded-xl border border-line bg-surface p-6 shadow-lg">
             <h2 className="text-lg font-semibold">
               Rip open {selected.size} item{selected.size === 1 ? "" : "s"}?
             </h2>
-            <p className="mt-1 text-sm text-zinc-500">
+            <p className="mt-1 text-sm text-muted">
               This moves {selected.size === 1 ? "it" : "them"} out of inventory
               into{" "}
               <span className="font-medium">For the Love of the Game</span>,
@@ -678,12 +678,12 @@ export default function InventoryTable({ items }: { items: Item[] }) {
                 type="date"
                 value={ripDate}
                 onChange={(e) => setRipDate(e.target.value)}
-                className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+                className="mt-1 w-full rounded-md border border-edge px-3 py-2 text-sm"
               />
             </label>
 
             {error && (
-              <p className="mt-3 text-sm text-red-600 dark:text-red-400">
+              <p className="mt-3 text-sm text-neg">
                 {error}
               </p>
             )}
@@ -693,7 +693,7 @@ export default function InventoryTable({ items }: { items: Item[] }) {
                 type="button"
                 disabled={pending}
                 onClick={() => setRipOpen(false)}
-                className="rounded-md px-4 py-2 text-sm text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                className="rounded-md px-4 py-2 text-sm text-muted hover:bg-inset"
               >
                 Cancel
               </button>
@@ -712,11 +712,11 @@ export default function InventoryTable({ items }: { items: Item[] }) {
 
       {bundleOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-6 shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="w-full max-w-md rounded-xl border border-line bg-surface p-6 shadow-lg">
             <h2 className="text-lg font-semibold">
               Sell {selected.size} items together
             </h2>
-            <p className="mt-1 text-sm text-zinc-500">
+            <p className="mt-1 text-sm text-muted">
               Enter one total payout — it&apos;s split evenly across the{" "}
               {selected.size} items. Each keeps its own cost.
             </p>
@@ -728,7 +728,7 @@ export default function InventoryTable({ items }: { items: Item[] }) {
                   type="date"
                   value={bundleDate}
                   onChange={(e) => setBundleDate(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+                  className="mt-1 w-full rounded-md border border-edge px-3 py-2 text-sm"
                 />
               </label>
               <label className="block text-sm">
@@ -738,7 +738,7 @@ export default function InventoryTable({ items }: { items: Item[] }) {
                   onChange={(e) => setBundlePlatform(e.target.value)}
                   list="bundle-platforms"
                   placeholder="eBay, Whatnot… (optional)"
-                  className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+                  className="mt-1 w-full rounded-md border border-edge px-3 py-2 text-sm"
                 />
                 <datalist id="bundle-platforms">
                   {PLATFORM_SUGGESTIONS.map((p) => (
@@ -754,7 +754,7 @@ export default function InventoryTable({ items }: { items: Item[] }) {
                   value={bundleTotal}
                   onChange={(e) => setBundleTotal(e.target.value)}
                   placeholder="Total received after fees"
-                  className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+                  className="mt-1 w-full rounded-md border border-edge px-3 py-2 text-sm"
                 />
               </label>
               <label className="block text-sm">
@@ -763,11 +763,11 @@ export default function InventoryTable({ items }: { items: Item[] }) {
                   value={bundleBuyer}
                   onChange={(e) => setBundleBuyer(e.target.value)}
                   placeholder="Who bought it — optional"
-                  className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+                  className="mt-1 w-full rounded-md border border-edge px-3 py-2 text-sm"
                 />
               </label>
               {bundlePerItem !== null && (
-                <p className="text-sm text-zinc-500">
+                <p className="text-sm text-muted">
                   ≈ {formatMoney(bundlePerItem)} per item
                   {" "}
                   (split to the cent)
@@ -776,7 +776,7 @@ export default function InventoryTable({ items }: { items: Item[] }) {
             </div>
 
             {error && (
-              <p className="mt-3 text-sm text-red-600 dark:text-red-400">
+              <p className="mt-3 text-sm text-neg">
                 {error}
               </p>
             )}
@@ -786,7 +786,7 @@ export default function InventoryTable({ items }: { items: Item[] }) {
                 type="button"
                 disabled={pending}
                 onClick={() => setBundleOpen(false)}
-                className="rounded-md px-4 py-2 text-sm text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                className="rounded-md px-4 py-2 text-sm text-muted hover:bg-inset"
               >
                 Cancel
               </button>

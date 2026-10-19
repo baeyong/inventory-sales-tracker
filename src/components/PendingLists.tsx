@@ -11,7 +11,7 @@ type Field = "payment_received" | "shipped";
 
 function Detail({ item }: { item: Item }) {
   return (
-    <span className="block text-xs text-zinc-500">
+    <span className="block text-xs text-muted">
       Sold {formatDate(item.sale_date)}
       {item.sale_platform && <> · on {item.sale_platform}</>}
       {item.purchase_platform && <> · from {item.purchase_platform}</>}
@@ -53,8 +53,8 @@ function Section({
   }
 
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
-      <div className="flex items-center justify-between border-b border-zinc-100 px-4 py-3 dark:border-zinc-800">
+    <div className="rounded-xl border border-line bg-surface">
+      <div className="flex items-center justify-between border-b border-line px-4 py-3">
         <h2 className="font-semibold">{title}</h2>
         <div className="flex items-center gap-2">
           {total !== undefined && items.length > 0 && (
@@ -65,7 +65,7 @@ function Section({
           <span
             className={`rounded-full px-2 py-0.5 text-xs font-medium ${
               items.length === 0
-                ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                ? "bg-emerald-50 text-pos dark:bg-emerald-950"
                 : "bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
             }`}
           >
@@ -74,9 +74,9 @@ function Section({
         </div>
       </div>
       {items.length === 0 ? (
-        <p className="px-4 py-6 text-sm text-zinc-500">Nothing waiting. 🎉</p>
+        <p className="px-4 py-6 text-sm text-muted">Nothing waiting. 🎉</p>
       ) : (
-        <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
+        <ul className="divide-y divide-line">
           {ordered.map((item) => {
             const meta = item.bundle_id
               ? bundleMeta.get(item.bundle_id)

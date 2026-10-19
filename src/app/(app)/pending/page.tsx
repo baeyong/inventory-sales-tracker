@@ -11,12 +11,13 @@ export const metadata = { title: "Pending · Resale Tracker" };
 
 export default async function PendingPage() {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("items")
     .select("*")
     .not("sale_date", "is", null)
     .or("payment_received.eq.false,shipped.eq.false")
     .order("sale_date", { ascending: true });
+  if (error) throw new Error(error.message);
   const items = (data ?? []) as Item[];
   const bundleNumbers = await getBundleNumbers();
 

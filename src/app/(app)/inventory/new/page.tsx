@@ -12,7 +12,8 @@ export default async function NewItemPage({
 }) {
   const params = await searchParams;
   const supabase = await createClient();
-  const { data } = await supabase.from("items").select("category");
+  const { data, error } = await supabase.from("items").select("category");
+  if (error) throw new Error(error.message);
   const categories = [...new Set((data ?? []).map((r) => r.category as string))];
   const boxes = await listRippedBoxes();
   // "Add a pull" on the Opened page links here with the box already chosen.

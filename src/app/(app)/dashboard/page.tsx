@@ -28,7 +28,8 @@ function lastTwelveMonths(): { key: string; label: string }[] {
 
 export default async function DashboardPage() {
   const supabase = await createClient();
-  const { data } = await supabase.from("items").select("*");
+  const { data, error } = await supabase.from("items").select("*");
+  if (error) throw new Error(error.message);
   const items = (data ?? []) as Item[];
 
   // Active stock only. Ripped product is consumed, Investments are long-term

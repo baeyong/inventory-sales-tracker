@@ -9,10 +9,11 @@ export const metadata = { title: "Expenses · Resale Tracker" };
 
 export default async function ExpensesPage() {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("expenses")
     .select("*")
     .order("spent_on", { ascending: false });
+  if (error) throw new Error(error.message);
   const expenses = (data ?? []) as Expense[];
 
   const total = expenses.reduce((sum, e) => sum + Number(e.amount), 0);

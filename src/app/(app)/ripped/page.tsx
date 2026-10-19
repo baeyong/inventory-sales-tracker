@@ -7,20 +7,22 @@ export const metadata = { title: "Opened boxes · Resale Tracker" };
 
 export default async function RippedPage() {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("items")
     .select("*")
     .not("opened_at", "is", null)
     .order("opened_at", { ascending: false });
+  if (error) throw new Error(error.message);
   const boxes = (data ?? []) as Item[];
 
   // Every card pulled from a box, wherever it is now — still held, sold, or
   // moved to Investments or the Collection.
-  const { data: pullRows } = await supabase
+  const { data: pullRows, error: pullError } = await supabase
     .from("items")
     .select("*")
     .not("ripped_from_id", "is", null)
     .order("name");
+  if (pullError) throw new Error(pullError.message);
   const pulls = (pullRows ?? []) as Item[];
 
   const totalCost = boxes.reduce((sum, i) => sum + Number(i.purchase_price), 0);

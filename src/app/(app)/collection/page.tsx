@@ -9,11 +9,12 @@ export const metadata = { title: "Personal Collection · Resale Tracker" };
 
 export default async function CollectionPage() {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("items")
     .select("*")
     .not("personal_at", "is", null)
     .order("personal_at", { ascending: false });
+  if (error) throw new Error(error.message);
   const items = (data ?? []) as Item[];
 
   const totalCost = items.reduce((sum, i) => sum + Number(i.purchase_price), 0);

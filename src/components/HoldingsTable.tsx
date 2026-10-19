@@ -3,14 +3,101 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { bulkUnmarkPersonal } from "@/app/(app)/actions";
+import {
+  bulkMarkUnopened,
+  bulkUnmarkInvestment,
+  bulkUnmarkPersonal,
+} from "@/app/(app)/actions";
 import { formatDate, formatMoney, isCardCategory, type Item } from "@/lib/types";
 import { matchesSearch } from "@/lib/search";
 import { sortItems, type SortDir, type SortKey } from "@/lib/sort";
 import SortHeader from "@/components/SortHeader";
 import MobileSort from "@/components/MobileSort";
 
-export default function CollectionTable({ items }: { items: Item[] }) {
+/** The three pages that list items held outside Inventory — Investments,
+ * Personal Collection and opened boxes — are the same table. This is it; the
+ * config below is the complete set of differences between them. */
+export type HoldingKind = "investment" | "personal" | "opened";
+
+/** The date column that says when an item entered this list. */
+type StateKey = "invested_at" | "personal_at" | "opened_at";
+
+type Config = {
+  /** Clears the state column and sends the item back to Inventory. */
+  moveBack: (ids: string[]) => Promise<{ error?: string }>;
+  searchPlaceholder: string;
+  /** "Item" everywhere except opened boxes, which hold products not items. */
+  nameLabel: string;
+  stateKey: StateKey;
+  stateLabel: string;
+  /** Opened boxes don't carry an estimated value — the pulls do. */
+  showEstValue: boolean;
+  backTitle: string;
+  sortOptions: { key: SortKey; label: string }[];
+};
+
+const CONFIG: Record<HoldingKind, Config> = {
+  investment: {
+    moveBack: bulkUnmarkInvestment,
+    searchPlaceholder: "Search holdings…",
+    nameLabel: "Item",
+    stateKey: "invested_at",
+    stateLabel: "Moved",
+    showEstValue: true,
+    backTitle: "Move back to inventory",
+    sortOptions: [
+      { key: "name", label: "Item" },
+      { key: "category", label: "Type" },
+      { key: "purchase_price", label: "Cost" },
+      { key: "est_value", label: "Est. value" },
+      { key: "purchase_date", label: "Purchased" },
+      { key: "invested_at", label: "Moved" },
+    ],
+  },
+  personal: {
+    moveBack: bulkUnmarkPersonal,
+    searchPlaceholder: "Search collection…",
+    nameLabel: "Item",
+    stateKey: "personal_at",
+    stateLabel: "Kept since",
+    showEstValue: true,
+    backTitle: "Move back to inventory",
+    sortOptions: [
+      { key: "name", label: "Item" },
+      { key: "category", label: "Type" },
+      { key: "purchase_price", label: "Cost" },
+      { key: "est_value", label: "Est. value" },
+      { key: "purchase_date", label: "Purchased" },
+      { key: "personal_at", label: "Kept since" },
+    ],
+  },
+  opened: {
+    moveBack: bulkMarkUnopened,
+    searchPlaceholder: "Search opened product…",
+    nameLabel: "Product",
+    stateKey: "opened_at",
+    stateLabel: "Opened",
+    showEstValue: false,
+    backTitle: "Move back to inventory (unopened)",
+    sortOptions: [
+      { key: "name", label: "Product" },
+      { key: "category", label: "Type" },
+      { key: "purchase_platform", label: "Bought at" },
+      { key: "purchase_date", label: "Purchased" },
+      { key: "purchase_price", label: "Cost" },
+      { key: "opened_at", label: "Opened" },
+    ],
+  },
+};
+
+export default function HoldingsTable({
+  items,
+  kind,
+}: {
+  items: Item[];
+  kind: HoldingKind;
+}) {
+  const cfg = CONFIG[kind];
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
@@ -36,7 +123,7 @@ export default function CollectionTable({ items }: { items: Item[] }) {
   function moveBack(id: string) {
     setError(null);
     startTransition(async () => {
-      const res = await bulkUnmarkPersonal([id]);
+      const res = await cfg.moveBack([id]);
       if (res.error) setError(res.error);
       else router.refresh();
     });
@@ -48,7 +135,7 @@ export default function CollectionTable({ items }: { items: Item[] }) {
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search collection…"
+          placeholder={cfg.searchPlaceholder}
           className="w-full rounded-md border border-zinc-300 px-3 py-1.5 text-sm sm:w-64 dark:border-zinc-700 dark:bg-zinc-950"
         />
         {search && (
@@ -70,14 +157,7 @@ export default function CollectionTable({ items }: { items: Item[] }) {
       </div>
 
       <MobileSort
-        options={[
-          { key: "name", label: "Item" },
-          { key: "category", label: "Type" },
-          { key: "purchase_price", label: "Cost" },
-          { key: "est_value", label: "Est. value" },
-          { key: "purchase_date", label: "Purchased" },
-          { key: "personal_at", label: "Kept since" },
-        ]}
+        options={cfg.sortOptions}
         activeKey={sortKey}
         dir={sortDir}
         onSort={toggleSort}
@@ -111,7 +191,7 @@ export default function CollectionTable({ items }: { items: Item[] }) {
               <span className="font-medium">
                 {formatMoney(Number(item.purchase_price))}
               </span>
-              {item.est_value !== null && (
+              {cfg.showEstValue && item.est_value !== null && (
                 <span title="Your estimated value">
                   ≈ {formatMoney(Number(item.est_value))}
                 </span>
@@ -123,7 +203,7 @@ export default function CollectionTable({ items }: { items: Item[] }) {
                 Purchased {formatDate(item.purchase_date)}
               </span>
               <span className="text-zinc-500">
-                Kept since {formatDate(item.personal_at)}
+                {cfg.stateLabel} {formatDate(item[cfg.stateKey])}
               </span>
             </div>
             <div className="mt-3">
@@ -140,18 +220,24 @@ export default function CollectionTable({ items }: { items: Item[] }) {
         ))}
       </ul>
 
-      {/* Desktop: table */}
+      {/* Desktop: table. One column narrower without Est. value. */}
       <div className="hidden overflow-x-auto rounded-xl border border-zinc-200 md:block dark:border-zinc-800">
-        <table className="w-full min-w-[860px] text-sm">
+        <table
+          className={`w-full text-sm ${
+            cfg.showEstValue ? "min-w-[860px]" : "min-w-[820px]"
+          }`}
+        >
           <thead className="bg-zinc-50 text-left text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
             <tr>
-              <SortHeader label="Item" sortKey="name" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
+              <SortHeader label={cfg.nameLabel} sortKey="name" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
               <SortHeader label="Type" sortKey="category" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
               <SortHeader label="Bought at" sortKey="purchase_platform" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
               <SortHeader label="Purchased" sortKey="purchase_date" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
               <SortHeader label="Cost" sortKey="purchase_price" activeKey={sortKey} dir={sortDir} onSort={toggleSort} align="right" />
-              <SortHeader label="Est. value" sortKey="est_value" activeKey={sortKey} dir={sortDir} onSort={toggleSort} align="right" />
-              <SortHeader label="Kept since" sortKey="personal_at" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
+              {cfg.showEstValue && (
+                <SortHeader label="Est. value" sortKey="est_value" activeKey={sortKey} dir={sortDir} onSort={toggleSort} align="right" />
+              )}
+              <SortHeader label={cfg.stateLabel} sortKey={cfg.stateKey} activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
               <th className="px-4 py-3" />
             </tr>
           </thead>
@@ -182,18 +268,20 @@ export default function CollectionTable({ items }: { items: Item[] }) {
                 <td className="px-4 py-3 text-right">
                   {formatMoney(Number(item.purchase_price))}
                 </td>
-                <td className="px-4 py-3 text-right">
-                  {item.est_value === null ? (
-                    <span className="text-zinc-400">—</span>
-                  ) : (
-                    formatMoney(Number(item.est_value))
-                  )}
-                </td>
-                <td className="px-4 py-3">{formatDate(item.personal_at)}</td>
+                {cfg.showEstValue && (
+                  <td className="px-4 py-3 text-right">
+                    {item.est_value === null ? (
+                      <span className="text-zinc-400">—</span>
+                    ) : (
+                      formatMoney(Number(item.est_value))
+                    )}
+                  </td>
+                )}
+                <td className="px-4 py-3">{formatDate(item[cfg.stateKey])}</td>
                 <td className="px-4 py-3 text-right">
                   <button
                     type="button"
-                    title="Move back to inventory"
+                    title={cfg.backTitle}
                     disabled={pending}
                     onClick={() => moveBack(item.id)}
                     className="text-xs text-zinc-500 hover:text-blue-600 hover:underline disabled:opacity-50"

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { formatMoney, type Item } from "@/lib/types";
-import CollectionTable from "@/components/CollectionTable";
+import HoldingsTable from "@/components/HoldingsTable";
 import PageStats, { type Stat } from "@/components/PageStats";
 
 export const metadata = { title: "Personal Collection · Resale Tracker" };
@@ -60,7 +60,7 @@ export default async function CollectionPage() {
         </div>
       ) : (
         <div className="mt-6">
-          <CollectionTable items={items} />
+          <HoldingsTable items={items} kind="personal" />
         </div>
       )}
     </div>

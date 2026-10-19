@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { formatMoney, type Item } from "@/lib/types";
-import RippedTable from "@/components/RippedTable";
+import HoldingsTable from "@/components/HoldingsTable";
 import PageStats from "@/components/PageStats";
 
 export const metadata = { title: "For the Love of the Game · Resale Tracker" };
@@ -47,7 +47,7 @@ export default async function RippedPage() {
         </div>
       ) : (
         <div className="mt-6">
-          <RippedTable items={items} />
+          <HoldingsTable items={items} kind="opened" />
         </div>
       )}
     </div>

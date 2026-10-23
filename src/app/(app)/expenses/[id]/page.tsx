@@ -16,11 +16,12 @@ export default async function ExpensePage({
 }) {
   const { id } = await params;
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("expenses")
     .select("*")
     .eq("id", id)
     .maybeSingle();
+  if (error) throw new Error(error.message);
   if (!data) notFound();
   const expense = data as Expense;
 

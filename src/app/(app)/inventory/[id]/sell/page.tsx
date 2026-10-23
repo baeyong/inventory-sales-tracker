@@ -13,11 +13,12 @@ export default async function SellItemPage({
 }) {
   const { id } = await params;
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("items")
     .select("*")
     .eq("id", id)
     .maybeSingle();
+  if (error) throw new Error(error.message);
   if (!data) notFound();
   const item = data as Item;
 

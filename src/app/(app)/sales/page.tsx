@@ -32,14 +32,16 @@ export default async function SalesPage({
   if (from) query = query.gte("sale_date", from);
   if (to) query = query.lte("sale_date", to);
   if (category) query = query.eq("category", category);
-  const { data } = await query;
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
   const items = (data ?? []) as Item[];
   const bundleNumbers = await getBundleNumbers();
 
-  const { data: catRows } = await supabase
+  const { data: catRows, error: catError } = await supabase
     .from("items")
     .select("category")
     .not("sale_date", "is", null);
+  if (catError) throw new Error(catError.message);
   const categories = [
     ...new Set((catRows ?? []).map((r) => r.category as string)),
   ].sort();

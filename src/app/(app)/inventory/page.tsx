@@ -32,16 +32,18 @@ export default async function InventoryPage({
     .order("created_at", { ascending: false });
   if (category) query = query.eq("category", category);
   if (listed !== null) query = query.eq("listed", listed);
-  const { data } = await query;
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
   const items = (data ?? []) as Item[];
 
-  const { data: catRows } = await supabase
+  const { data: catRows, error: catError } = await supabase
     .from("items")
     .select("category")
     .is("sale_date", null)
     .is("opened_at", null)
     .is("invested_at", null)
     .is("personal_at", null);
+  if (catError) throw new Error(catError.message);
   const categories = [
     ...new Set((catRows ?? []).map((r) => r.category as string)),
   ].sort();

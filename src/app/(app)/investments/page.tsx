@@ -10,11 +10,12 @@ export const metadata = { title: "Investments · Resale Tracker" };
 
 export default async function InvestmentsPage() {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("items")
     .select("*")
     .not("invested_at", "is", null)
     .order("invested_at", { ascending: false });
+  if (error) throw new Error(error.message);
   const items = (data ?? []) as Item[];
 
   const totalCost = items.reduce((sum, i) => sum + costBasis(i), 0);

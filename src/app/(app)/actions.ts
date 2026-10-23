@@ -183,18 +183,20 @@ export type RippedBox = {
 export async function listRippedBoxes(): Promise<RippedBox[]> {
   const { supabase, user } = await requireUser();
 
-  const { data: boxes } = await supabase
+  const { data: boxes, error: boxesError } = await supabase
     .from("items")
     .select("id, name, purchase_price, opened_at")
     .eq("user_id", user.id)
     .not("opened_at", "is", null)
     .order("opened_at", { ascending: false });
+  if (boxesError) throw new Error(boxesError.message);
 
-  const { data: links } = await supabase
+  const { data: links, error: linksError } = await supabase
     .from("items")
     .select("ripped_from_id")
     .eq("user_id", user.id)
     .not("ripped_from_id", "is", null);
+  if (linksError) throw new Error(linksError.message);
 
   const counts = new Map<string, number>();
   for (const r of links ?? []) {
@@ -532,10 +534,11 @@ export async function importItems(rows: unknown): Promise<{
  * bundle's earliest created_at (oldest bundle = 1). */
 export async function getBundleNumbers(): Promise<Record<string, number>> {
   const { supabase } = await requireUser();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("items")
     .select("bundle_id, created_at")
     .not("bundle_id", "is", null);
+  if (error) throw new Error(error.message);
 
   const counts = new Map<string, number>();
   const firstSeen = new Map<string, string>();

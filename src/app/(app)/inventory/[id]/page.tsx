@@ -29,15 +29,17 @@ export default async function ItemPage({
 }) {
   const { id } = await params;
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("items")
     .select("*")
     .eq("id", id)
     .maybeSingle();
+  if (error) throw new Error(error.message);
   if (!data) notFound();
   const item = data as Item;
 
-  const { data: catRows } = await supabase.from("items").select("category");
+  const { data: catRows, error: catError } = await supabase.from("items").select("category");
+  if (catError) throw new Error(catError.message);
   const categories = [
     ...new Set((catRows ?? []).map((r) => r.category as string)),
   ];

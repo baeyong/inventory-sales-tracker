@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getBundleNumbers } from "@/app/(app)/actions";
-import { formatMoney, type Item } from "@/lib/types";
+import { costBasis, formatMoney, type Item } from "@/lib/types";
 import SalesTable from "@/components/SalesTable";
 import FilterBar from "@/components/FilterBar";
 import PageHero from "@/components/PageHero";
@@ -48,7 +48,7 @@ export default async function SalesPage({
   const unknownCount = items.length - known.length;
   const totalPayout = known.reduce((s, i) => s + Number(i.sale_payout), 0);
   const totalProfit = known.reduce(
-    (s, i) => s + Number(i.sale_payout) - Number(i.purchase_price),
+    (s, i) => s + Number(i.sale_payout) - costBasis(i),
     0
   );
 

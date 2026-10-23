@@ -1,7 +1,7 @@
 import BackLink from "@/components/BackLink";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { formatMoney, type Item } from "@/lib/types";
+import { costBasis, formatMoney, type Item } from "@/lib/types";
 import SellForm from "@/components/SellForm";
 
 export const metadata = { title: "Sell item · Resale Tracker" };
@@ -43,7 +43,7 @@ export default async function SellItemPage({
           <div className="rounded-[14px] bg-surface px-[18px] py-[13px]">
             <div className="cap">Cost</div>
             <div className="disp tnum mt-[3px] text-[21px] font-bold">
-              {formatMoney(Number(item.purchase_price))}
+              {formatMoney(costBasis(item))}
             </div>
           </div>
         </div>

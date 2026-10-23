@@ -1,4 +1,4 @@
-import type { Expense, Item } from "./types";
+import { costBasis, type Expense, type Item } from "./types";
 
 export type SortKey =
   | "name"
@@ -51,7 +51,7 @@ function itemValue(item: Item, key: SortKey): string | number | null {
         ? item.purchase_platform.toLowerCase()
         : null;
     case "purchase_price":
-      return Number(item.purchase_price);
+      return costBasis(item);
     case "purchase_date":
       return item.purchase_date;
     case "est_value":
@@ -69,7 +69,7 @@ function itemValue(item: Item, key: SortKey): string | number | null {
     case "profit":
       return item.sale_payout === null
         ? null
-        : Number(item.sale_payout) - Number(item.purchase_price);
+        : Number(item.sale_payout) - costBasis(item);
   }
 }
 

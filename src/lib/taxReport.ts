@@ -67,7 +67,8 @@ export function buildTaxCsv(items: Row[], expenses: Row[]): string {
 
   for (const it of items) {
     const status = itemStatus(it);
-    const cost = num(it.purchase_price) ?? 0;
+    // Grading fees are part of what the item cost.
+    const cost = (num(it.purchase_price) ?? 0) + (num(it.grading_cost) ?? 0);
     if (status === "Sold") {
       const payout = num(it.sale_payout);
       if (payout === null) {
@@ -241,7 +242,8 @@ export function buildTaxCsv(items: Row[], expenses: Row[]): string {
 
   for (const it of items) {
     const status = itemStatus(it);
-    const cost = num(it.purchase_price) ?? 0;
+    // Grading fees are part of what the item cost.
+    const cost = (num(it.purchase_price) ?? 0) + (num(it.grading_cost) ?? 0);
     const payout = num(it.sale_payout);
     // The date behind this row's status: sold, opened, or moved to Investments.
     const statusDate =

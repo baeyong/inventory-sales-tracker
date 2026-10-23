@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { formatMoney, type Item } from "@/lib/types";
+import { costBasis, formatMoney, type Item } from "@/lib/types";
 import HoldingsTable from "@/components/HoldingsTable";
 import PageHero, { type Stat } from "@/components/PageHero";
 import { HoldingsTabs } from "@/components/SectionTabs";
@@ -17,13 +17,13 @@ export default async function InvestmentsPage() {
     .order("invested_at", { ascending: false });
   const items = (data ?? []) as Item[];
 
-  const totalCost = items.reduce((sum, i) => sum + Number(i.purchase_price), 0);
+  const totalCost = items.reduce((sum, i) => sum + costBasis(i), 0);
   const valued = items.filter((i) => i.est_value !== null);
   const totalValue = valued.reduce((sum, i) => sum + Number(i.est_value), 0);
   // Compared only against the cost of the valued items, so un-valued holdings
   // don't drag the figure down as if they were worth nothing.
   const potential =
-    totalValue - valued.reduce((sum, i) => sum + Number(i.purchase_price), 0);
+    totalValue - valued.reduce((sum, i) => sum + costBasis(i), 0);
 
   const stats: Stat[] = [
     { label: "Cost", value: formatMoney(totalCost) },

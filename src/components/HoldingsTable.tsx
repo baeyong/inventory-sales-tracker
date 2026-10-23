@@ -4,7 +4,7 @@ import { useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { bulkUnmarkInvestment, bulkUnmarkPersonal } from "@/app/(app)/actions";
-import { formatDate, formatMoney, isCardCategory, type Item } from "@/lib/types";
+import { costBasis, formatDate, formatMoney, isCardCategory, type Item } from "@/lib/types";
 import { matchesSearch } from "@/lib/search";
 import { sortItems, type SortDir, type SortKey } from "@/lib/sort";
 import { categoryHue } from "@/lib/categoryHue";
@@ -168,7 +168,7 @@ export default function HoldingsTable({
                     <div className="cap mt-0.5">{detailLine(item)}</div>
                     <div className="tnum mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-ink-2">
                       <span className="font-semibold text-ink">
-                        {formatMoney(Number(item.purchase_price))}
+                        {formatMoney(costBasis(item))}
                       </span>
                       {item.est_value !== null && (
                         <span>worth {formatMoney(Number(item.est_value))}</span>
@@ -233,7 +233,7 @@ export default function HoldingsTable({
                         </div>
                       </td>
                       <td className={`${td} tnum text-right text-ink-2`}>
-                        {formatMoney(Number(item.purchase_price))}
+                        {formatMoney(costBasis(item))}
                       </td>
                       <td className={`${td} disp tnum text-right text-[15px] font-bold`}>
                         {item.est_value === null ? (

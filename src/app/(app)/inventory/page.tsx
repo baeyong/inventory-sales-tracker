@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { formatMoney, type Item } from "@/lib/types";
+import { costBasis, formatMoney, type Item } from "@/lib/types";
 import InventoryTable from "@/components/InventoryTable";
 import FilterBar from "@/components/FilterBar";
 import PageHero from "@/components/PageHero";
@@ -46,11 +46,11 @@ export default async function InventoryPage({
     ...new Set((catRows ?? []).map((r) => r.category as string)),
   ].sort();
 
-  const totalCost = items.reduce((sum, i) => sum + Number(i.purchase_price), 0);
+  const totalCost = items.reduce((sum, i) => sum + costBasis(i), 0);
   const valued = items.filter((i) => i.est_value !== null);
   const totalValue = valued.reduce((sum, i) => sum + Number(i.est_value), 0);
   const potential = totalValue - valued.reduce(
-    (sum, i) => sum + Number(i.purchase_price),
+    (sum, i) => sum + costBasis(i),
     0
   );
 

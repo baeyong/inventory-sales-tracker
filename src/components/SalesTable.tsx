@@ -13,6 +13,7 @@ import {
 } from "@/app/(app)/actions";
 import {
   DEFAULT_CATEGORIES,
+  costBasis,
   formatDate,
   formatMoney,
   type Item,
@@ -48,7 +49,7 @@ import {
 } from "@/components/Toolbar";
 
 const profitOf = (i: Item) =>
-  i.sale_payout === null ? null : Number(i.sale_payout) - Number(i.purchase_price);
+  i.sale_payout === null ? null : Number(i.sale_payout) - costBasis(i);
 
 /** A run of the list as it's drawn: one card per bundle, and consecutive
  * single sales sharing a card between them. Keeps the sort order intact. */
@@ -143,7 +144,7 @@ export default function SalesTable({
     agg.count += 1;
     if (it.sale_payout !== null) {
       agg.total += Number(it.sale_payout);
-      agg.profit += Number(it.sale_payout) - Number(it.purchase_price);
+      agg.profit += Number(it.sale_payout) - costBasis(it);
       agg.known += 1;
     }
     bundleTotals.set(it.bundle_id, agg);
@@ -232,13 +233,13 @@ export default function SalesTable({
   // with a payout recorded, matching how the page header reports them.
   const picked = items.filter((i) => selected.has(i.id));
   const pickedWithPayout = picked.filter((i) => i.sale_payout !== null);
-  const pickedCost = picked.reduce((s, i) => s + Number(i.purchase_price), 0);
+  const pickedCost = picked.reduce((s, i) => s + costBasis(i), 0);
   const pickedPayout = pickedWithPayout.reduce(
     (s, i) => s + Number(i.sale_payout),
     0
   );
   const pickedProfit = pickedWithPayout.reduce(
-    (s, i) => s + Number(i.sale_payout) - Number(i.purchase_price),
+    (s, i) => s + Number(i.sale_payout) - costBasis(i),
     0
   );
   const pickedMissing = picked.length - pickedWithPayout.length;
@@ -348,7 +349,7 @@ export default function SalesTable({
         <div className="tnum col-span-2 flex gap-4 text-xs text-ink-2 md:contents md:text-[13px]">
           <span className="md:text-right">
             <span className="text-muted md:hidden">Cost </span>
-            {formatMoney(Number(item.purchase_price))}
+            {formatMoney(costBasis(item))}
           </span>
           <span className="md:text-right md:text-ink">
             <span className="text-muted md:hidden">Payout </span>

@@ -82,6 +82,24 @@ function detailLine(item: Item): string {
     .join(" · ");
 }
 
+/** "At PSA" / "Plan to grade" next to a card that's in the grading flow. */
+function GradingTag({ item }: { item: Item }) {
+  const label = item.grading_submitted_at && !item.grading_returned_at
+    ? `At ${item.grade_company ?? "grader"}`
+    : item.plan_to_grade
+      ? "Plan to grade"
+      : null;
+  if (!label) return null;
+  return (
+    <Link
+      href="/grading"
+      className="ml-2 whitespace-nowrap rounded-full bg-soft px-2 py-0.5 align-middle text-[10px] font-semibold text-on-soft hover:underline"
+    >
+      {label}
+    </Link>
+  );
+}
+
 export default function InventoryTable({
   items,
   toolbar,
@@ -420,6 +438,7 @@ export default function InventoryTable({
                     >
                       {item.name}
                     </Link>
+                    <GradingTag item={item} />
                     <div className="cap mt-0.5">{detailLine(item)}</div>
                     <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-ink-2">
                       <span className="tnum font-semibold text-ink">
@@ -525,6 +544,7 @@ export default function InventoryTable({
                               >
                                 {item.name}
                               </Link>
+                              <GradingTag item={item} />
                               <div className="cap mt-0.5">{detailLine(item)}</div>
                             </div>
                           </div>

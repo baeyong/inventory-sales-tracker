@@ -110,3 +110,13 @@ export function marketLink(item: Item): MarketLink {
   const platform = PLATFORMS[key] ?? PLATFORMS.ebay_sold;
   return { label: platform.label, url: platform.build(query), query, custom: false };
 }
+
+/** eBay sold search for a raw card at one grade, for filling in the grading
+ * calculator. "raw" leaves out slabbed copies so they don't skew the price. */
+export function gradeSearchUrl(item: Item, grade: string, company = "PSA"): string {
+  const override = item.market_search?.trim() ?? "";
+  const base = override && !/^https?:\/\//i.test(override) ? override : autoQuery(item);
+  const query =
+    grade === "raw" ? `${base} -PSA -BGS -SGC -CGC` : `${base} ${company} ${grade}`;
+  return PLATFORMS.ebay_sold.build(query);
+}

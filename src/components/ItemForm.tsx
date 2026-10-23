@@ -298,6 +298,28 @@ export default function ItemForm({
                     <option value="graded">Graded</option>
                   </select>
                 </label>
+                {condition === "raw" && (
+                  <>
+                    {/* While a raw card is out for grading this holds the
+                        company it went to. */}
+                    <input
+                      type="hidden"
+                      name="grade_company"
+                      value={item?.grade_company ?? ""}
+                    />
+                    <label className="inline-flex items-center gap-[9px] self-end pb-2.5 text-[13px]">
+                      <input
+                        type="checkbox"
+                        name="plan_to_grade"
+                        defaultChecked={
+                          v ? v.plan_to_grade === "on" : (item?.plan_to_grade ?? false)
+                        }
+                        className="h-4 w-4 accent-[var(--accent)]"
+                      />
+                      Plan to grade
+                    </label>
+                  </>
+                )}
                 {condition === "graded" && (
                   <div className="grid grid-cols-2 gap-2.5">
                     <label>

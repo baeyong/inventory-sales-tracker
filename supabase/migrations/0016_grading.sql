@@ -5,6 +5,8 @@
 -- grading_cost:          what grading this card actually cost (tier + shipping),
 --                        added on top of purchase_price for profit. Null = never
 --                        sent in; kept apart so the original price survives.
+-- grade_plan_cost:       the fee you expect to pay, for the "worth it?" maths.
+--                        Doesn't touch the card's cost until it's sent in.
 -- plan_to_grade:         a raw card you're weighing up for grading.
 -- grade_values:          what it's worth at each grade, e.g.
 --                        {"raw": 20, "10": 150, "9": 60, "8": 35}
@@ -16,6 +18,7 @@
 -- cert_number:           the slab's certification number
 
 alter table public.items add column grading_cost numeric check (grading_cost >= 0);
+alter table public.items add column grade_plan_cost numeric check (grade_plan_cost >= 0);
 alter table public.items add column plan_to_grade boolean not null default false;
 alter table public.items add column grade_values jsonb;
 alter table public.items add column grade_odds jsonb;

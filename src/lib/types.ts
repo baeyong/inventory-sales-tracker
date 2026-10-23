@@ -63,6 +63,7 @@ export interface Item {
   market_platform: string | null; // marketplace key for value lookup (null = category default)
   market_search: string | null; // search-words or full-URL override (null = auto)
   grading_cost: number | null; // fee paid to grade it (null = never sent in)
+  grade_plan_cost: number | null; // expected fee, for the "worth it?" maths only
   plan_to_grade: boolean; // a raw card being weighed up for grading
   grade_values: GradeMap | null; // worth at each grade, plus "raw"
   grade_odds: GradeMap | null; // % chance of each grade

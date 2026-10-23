@@ -1,10 +1,12 @@
 import BackLink from "@/components/BackLink";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { formatDate, formatMoney, type Item } from "@/lib/types";
+import { formatDate, formatMoney, isCardCategory, type Item } from "@/lib/types";
 import { cardTitle, detailGrid } from "@/lib/ui";
 import ItemForm from "@/components/ItemForm";
-import { listRippedBoxes } from "@/app/(app)/actions";
+import GradingPanel from "@/components/GradingPanel";
+import { gradingStage } from "@/lib/grading";
+import { getDefaultGradingCost, listRippedBoxes } from "@/app/(app)/actions";
 import SellForm from "@/components/SellForm";
 import OpenedForm from "@/components/OpenedForm";
 import DeleteButton from "@/components/DeleteButton";
@@ -41,6 +43,12 @@ export default async function ItemPage({
   ];
   const boxes = await listRippedBoxes();
   const back = backTo(item);
+  // Raw cards lined up for grading, out at the grader, or back from it.
+  const showGrading =
+    isCardCategory(item.category) &&
+    gradingStage(item) !== null &&
+    (item.sale_date === null || item.grading_returned_at !== null);
+  const defaultGradingCost = showGrading ? await getDefaultGradingCost() : 0;
 
   return (
     <div className="flex flex-col gap-3">
@@ -51,6 +59,14 @@ export default async function ItemPage({
       {/* Separate forms, so they sit below the item form in its left column */}
       <div className={`${detailGrid} mt-1`}>
         <div className="flex min-w-0 flex-col gap-3.5">
+          {showGrading && (
+            <GradingPanel
+              item={item}
+              defaultCost={defaultGradingCost}
+              today={new Date().toISOString().slice(0, 10)}
+            />
+          )}
+
           {item.sale_date && (
             <section className="card px-6 py-[22px]">
               <h2 className={cardTitle}>Sale details</h2>

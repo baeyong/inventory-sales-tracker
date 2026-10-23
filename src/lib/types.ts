@@ -20,6 +20,17 @@ export const DEFAULT_CATEGORIES = [
   "Collectibles",
 ];
 
+/** Numbers keyed by grade ("10", "9"…) and, for values, "raw". */
+export type GradeMap = Record<string, number>;
+
+/** What an item cost all-in: its purchase price plus any grading fee. Profit
+ * is always measured against this, never against purchase_price alone. */
+export function costBasis(
+  item: Pick<Item, "purchase_price" | "grading_cost">
+): number {
+  return Number(item.purchase_price) + Number(item.grading_cost ?? 0);
+}
+
 export interface Item {
   id: string;
   user_id: string;
@@ -51,6 +62,15 @@ export interface Item {
   personal_at: string | null; // YYYY-MM-DD moved to Personal Collection, null = not a keeper
   market_platform: string | null; // marketplace key for value lookup (null = category default)
   market_search: string | null; // search-words or full-URL override (null = auto)
+  grading_cost: number | null; // fee paid to grade it (null = never sent in)
+  plan_to_grade: boolean; // a raw card being weighed up for grading
+  grade_values: GradeMap | null; // worth at each grade, plus "raw"
+  grade_odds: GradeMap | null; // % chance of each grade
+  grade_pop: GradeMap | null; // pop counts per grade, for reference
+  grading_submitted_at: string | null; // YYYY-MM-DD sent to the grader
+  grading_returned_at: string | null; // YYYY-MM-DD back from the grader
+  grade_predicted: string | null; // the grade expected when sent in
+  cert_number: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -15,6 +15,7 @@ import {
 } from "@/app/(app)/actions";
 import {
   DEFAULT_CATEGORIES,
+  costBasis,
   PLATFORM_SUGGESTIONS,
   formatDate,
   formatMoney,
@@ -203,7 +204,7 @@ export default function InventoryTable({
   // only figure an inventory item carries.
   const pickedCost = items
     .filter((i) => selected.has(i.id))
-    .reduce((s, i) => s + Number(i.purchase_price), 0);
+    .reduce((s, i) => s + costBasis(i), 0);
 
   const allSelected = visible.length > 0 && visible.every((i) => selected.has(i.id));
 
@@ -422,7 +423,7 @@ export default function InventoryTable({
                     <div className="cap mt-0.5">{detailLine(item)}</div>
                     <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-ink-2">
                       <span className="tnum font-semibold text-ink">
-                        {formatMoney(Number(item.purchase_price))}
+                        {formatMoney(costBasis(item))}
                       </span>
                       {item.purchase_platform && <span>{item.purchase_platform}</span>}
                       {item.purchase_date && (
@@ -535,7 +536,7 @@ export default function InventoryTable({
                           </div>
                         </td>
                         <td className={`${td} tnum text-right text-ink-2`}>
-                          {formatMoney(Number(item.purchase_price))}
+                          {formatMoney(costBasis(item))}
                         </td>
                         <td className={`${td} text-right`}>
                           <EstInput

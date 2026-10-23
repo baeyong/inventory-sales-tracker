@@ -11,6 +11,7 @@ import {
 import {
   DEFAULT_CATEGORIES,
   GRADE_COMPANIES,
+  costBasis,
   formatDate,
   formatMoney,
   isCardCategory,
@@ -117,7 +118,7 @@ export default function ItemForm({
   // The box picker shows for cards, and whenever a box is already chosen.
   const showPicker = boxes.length > 0 && (isCard || rippedFrom !== "");
 
-  const cost = item ? Number(item.purchase_price) : 0;
+  const cost = item ? costBasis(item) : 0;
   const est = item?.est_value == null ? null : Number(item.est_value);
   const chip = item ? stateChip(item) : null;
   const summary = item ? cardSummary(item) : null;

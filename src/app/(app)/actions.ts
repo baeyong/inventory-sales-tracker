@@ -1212,6 +1212,9 @@ const ITEM_COLUMNS = [
   "opened_at", "ripped_from_id", "invested_at", "personal_at",
   "market_platform",
   "market_search",
+  "grading_cost", "plan_to_grade", "grade_values", "grade_odds", "grade_pop",
+  "grading_submitted_at", "grading_returned_at", "grade_predicted",
+  "cert_number",
   "created_at", "updated_at",
 ] as const;
 const EXPENSE_COLUMNS = [

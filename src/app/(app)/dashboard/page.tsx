@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { formatMoney, type Item } from "@/lib/types";
+import { costBasis, formatMoney, type Item } from "@/lib/types";
 import { categoryHue } from "@/lib/categoryHue";
 import { signedMoney } from "@/lib/ui";
 import ProfitChart, { type MonthPoint } from "@/components/ProfitChart";
@@ -41,7 +41,7 @@ export default async function DashboardPage() {
   // Long-term holdings: still owned and unsold, just not up for sale.
   const holdings = items.filter((i) => !i.sale_date && i.invested_at);
   const holdingCost = holdings.reduce(
-    (s, i) => s + Number(i.purchase_price),
+    (s, i) => s + costBasis(i),
     0
   );
   const holdingValued = holdings.filter((i) => i.est_value !== null);
@@ -51,7 +51,7 @@ export default async function DashboardPage() {
   );
   // Personal collection: owned, unsold, and never for sale.
   const keepers = items.filter((i) => !i.sale_date && i.personal_at);
-  const keeperCost = keepers.reduce((s, i) => s + Number(i.purchase_price), 0);
+  const keeperCost = keepers.reduce((s, i) => s + costBasis(i), 0);
   const keeperValued = keepers.filter((i) => i.est_value !== null);
   const keeperValue = keeperValued.reduce(
     (s, i) => s + Number(i.est_value),
@@ -60,18 +60,18 @@ export default async function DashboardPage() {
   // Profit math only counts sales whose payout is known.
   const soldKnown = sold.filter((i) => i.sale_payout !== null);
 
-  const invested = unsold.reduce((s, i) => s + Number(i.purchase_price), 0);
+  const invested = unsold.reduce((s, i) => s + costBasis(i), 0);
 
   const revenue = soldKnown.reduce((s, i) => s + Number(i.sale_payout), 0);
   const profit = soldKnown.reduce(
-    (s, i) => s + Number(i.sale_payout) - Number(i.purchase_price),
+    (s, i) => s + Number(i.sale_payout) - costBasis(i),
     0
   );
 
   const thisMonth = new Date().toISOString().slice(0, 7);
   const profitThisMonth = soldKnown
     .filter((i) => monthKey(i.sale_date!) === thisMonth)
-    .reduce((s, i) => s + Number(i.sale_payout) - Number(i.purchase_price), 0);
+    .reduce((s, i) => s + Number(i.sale_payout) - costBasis(i), 0);
 
   const byMonth = new Map<string, number>();
   for (const i of soldKnown) {
@@ -80,7 +80,7 @@ export default async function DashboardPage() {
       key,
       (byMonth.get(key) ?? 0) +
         Number(i.sale_payout) -
-        Number(i.purchase_price)
+        costBasis(i)
     );
   }
   const chartData: MonthPoint[] = lastTwelveMonths().map(({ key, label }) => ({
@@ -107,11 +107,11 @@ export default async function DashboardPage() {
       row.soldCount++;
       if (i.sale_payout !== null) {
         row.revenue += Number(i.sale_payout);
-        row.catProfit += Number(i.sale_payout) - Number(i.purchase_price);
+        row.catProfit += Number(i.sale_payout) - costBasis(i);
       }
     } else {
       row.inStock++;
-      row.invested += Number(i.purchase_price);
+      row.invested += costBasis(i);
     }
     byCategory.set(i.category, row);
   }
@@ -211,7 +211,7 @@ export default async function DashboardPage() {
               <PotentialLine
                 value={
                   holdingValue -
-                  holdingValued.reduce((s, i) => s + Number(i.purchase_price), 0)
+                  holdingValued.reduce((s, i) => s + costBasis(i), 0)
                 }
               />
             )}

@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import {
   cancelGradingSubmission,
   markGradeReturned,
+  updateGradingResult,
   saveGradingPlan,
   sendCardToGrading,
   type FormState,
@@ -502,13 +503,20 @@ function ReturnForm({ item, today }: { item: Item; today: string }) {
   );
 }
 
+/** Value now minus the raw value and the fee; null until both values exist. */
+function gainVsRaw(raw: number | null, now: number | null, fee: number): number | null {
+  return raw !== null && now !== null ? now - raw - fee : null;
+}
+
 function ReturnedSummary({ item }: { item: Item }) {
-  const values = item.grade_values ?? {};
-  const raw = values.raw;
+  const [editing, setEditing] = useState(false);
+  const raw = item.grade_values?.raw ?? null;
   const fee = Number(item.grading_cost ?? 0);
   const now = item.est_value === null ? null : Number(item.est_value);
-  const gain = raw !== undefined && now !== null ? now - raw - fee : null;
+  const gain = gainVsRaw(raw, now, fee);
   const hit = item.grade_predicted !== null && item.grade_predicted === item.grade;
+
+  if (editing) return <ResultForm item={item} onDone={() => setEditing(false)} />;
 
   return (
     <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
@@ -528,9 +536,161 @@ function ReturnedSummary({ item }: { item: Item }) {
         Sent {formatDate(item.grading_submitted_at)}, back{" "}
         {formatDate(item.grading_returned_at)}
         {item.cert_number && <> · cert {item.cert_number}</>}. Gain is its value
-        now minus the raw value and the fee.
+        now ({now === null ? "not set" : formatMoney(now)}) minus the raw value (
+        {raw === null ? "not set" : formatMoney(raw)}) and the fee.
       </p>
+      <div className="col-span-2 sm:col-span-4">
+        <button type="button" className={btnSecondary} onClick={() => setEditing(true)}>
+          Edit
+        </button>
+      </div>
     </div>
+  );
+}
+
+/** Edit everything the returned summary is built from. */
+function ResultForm({ item, onDone }: { item: Item; onDone: () => void }) {
+  const [state, action, pending] = useActionState<FormState, FormData>(
+    async (prev, formData) => {
+      const res = await updateGradingResult(prev, formData);
+      if (res?.notice) onDone();
+      return res;
+    },
+    null
+  );
+  const v = state?.values;
+  const initialRaw = item.grade_values?.raw;
+  const [raw, setRaw] = useState(v?.raw_value ?? (initialRaw === undefined ? "" : String(initialRaw)));
+  const [fee, setFee] = useState(v?.grading_cost ?? String(item.grading_cost ?? 0));
+  const [now, setNow] = useState(
+    v?.est_value ?? (item.est_value === null ? "" : String(item.est_value))
+  );
+  const num = (s: string) => (s.trim() === "" || !Number.isFinite(Number(s)) ? null : Number(s));
+  const gain = gainVsRaw(num(raw), num(now), num(fee) ?? 0);
+
+  return (
+    <form action={action} className="flex flex-col gap-4">
+      <input type="hidden" name="id" value={item.id} />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <label>
+          <span className={fieldLabel}>Expected grade</span>
+          <input
+            name="grade_predicted"
+            defaultValue={v?.grade_predicted ?? item.grade_predicted ?? ""}
+            placeholder="10"
+            className={`${field} tnum`}
+          />
+        </label>
+        <label>
+          <span className={fieldLabel}>Company</span>
+          <select
+            name="company"
+            defaultValue={v?.company ?? item.grade_company ?? "PSA"}
+            className={field}
+          >
+            {GRADE_COMPANIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span className={fieldLabel}>Grade it got</span>
+          <input
+            name="grade"
+            required
+            defaultValue={v?.grade ?? item.grade ?? ""}
+            className={`${field} tnum`}
+          />
+        </label>
+        <label>
+          <span className={fieldLabel}>Date sent</span>
+          <input
+            name="submitted_at"
+            type="date"
+            required
+            defaultValue={v?.submitted_at ?? item.grading_submitted_at ?? ""}
+            className={`${field} tnum`}
+          />
+        </label>
+        <label>
+          <span className={fieldLabel}>Date back</span>
+          <input
+            name="returned_at"
+            type="date"
+            required
+            defaultValue={v?.returned_at ?? item.grading_returned_at ?? ""}
+            className={`${field} tnum`}
+          />
+        </label>
+        <label>
+          <span className={fieldLabel}>Cert number</span>
+          <input
+            name="cert_number"
+            defaultValue={v?.cert_number ?? item.cert_number ?? ""}
+            className={`${field} tnum`}
+          />
+        </label>
+        <label>
+          <span className={fieldLabel}>Fee</span>
+          <input
+            name="grading_cost"
+            type="number"
+            step="0.01"
+            min="0"
+            required
+            value={fee}
+            onChange={(e) => setFee(e.target.value)}
+            className={`${field} tnum`}
+          />
+          <span className={fieldHint}>Part of the card&rsquo;s cost.</span>
+        </label>
+        <label>
+          <span className={fieldLabel}>Raw value</span>
+          <input
+            name="raw_value"
+            type="number"
+            step="0.01"
+            min="0"
+            value={raw}
+            onChange={(e) => setRaw(e.target.value)}
+            className={`${field} tnum`}
+          />
+          <span className={fieldHint}>What it was worth ungraded.</span>
+        </label>
+        <label>
+          <span className={fieldLabel}>Worth now</span>
+          <input
+            name="est_value"
+            type="number"
+            step="0.01"
+            min="0"
+            value={now}
+            onChange={(e) => setNow(e.target.value)}
+            className={`${field} tnum`}
+          />
+          <span className={fieldHint}>The card&rsquo;s value.</span>
+        </label>
+      </div>
+      <p className="rounded-xl bg-inset px-4 py-3 text-[13px] text-ink-2">
+        Gain vs raw:{" "}
+        {gain === null ? (
+          <span className="text-muted">enter the raw value and what it&rsquo;s worth now</span>
+        ) : (
+          <span className={`tnum font-bold ${toneClass(gain)}`}>{signedMoney(gain)}</span>
+        )}
+      </p>
+      <div className="flex flex-wrap items-center gap-3">
+        <button type="submit" disabled={pending} className={btnPrimary}>
+          {pending ? "Saving…" : "Save"}
+        </button>
+        <button type="button" disabled={pending} className={btnText} onClick={onDone}>
+          Cancel
+        </button>
+        {state?.error && <span className="text-[13px] text-neg">{state.error}</span>}
+      </div>
+    </form>
   );
 }
 

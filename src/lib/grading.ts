@@ -1,10 +1,8 @@
-import type { GradeMap, Item } from "./types";
+import { costBasis, type Item } from "./types";
 
-// The "worth grading?" maths. Everything works from what the user typed in:
-// the card's value at each grade and their % chance of getting each grade.
-
-/** The grades tracked, best first. */
-export const GRADES = ["10", "9", "8", "7", "6"] as const;
+// Grading money: what went into graded cards and what came back out. Only real
+// figures — what was paid, sold for, or is held at its estimated value — and
+// the held value is always kept apart from cash actually made.
 
 /** Where a card stands in the grading flow. */
 export type GradingStage = "candidate" | "submitted" | "returned";
@@ -16,121 +14,132 @@ export function gradingStage(item: Item): GradingStage | null {
   return null;
 }
 
-/** Starting odds for the "how does it look?" shortcut. Rough guides for
- * modern cards, meant to be adjusted. */
-export const ODDS_PRESETS: { label: string; odds: GradeMap }[] = [
-  { label: "Pack-fresh", odds: { "10": 45, "9": 45, "8": 10 } },
-  { label: "Looks clean", odds: { "10": 20, "9": 55, "8": 20, "7": 5 } },
-  { label: "Minor flaws", odds: { "10": 5, "9": 30, "8": 40, "7": 20, "6": 5 } },
-];
+/** Fee a new submission starts on when you've never entered one: PSA's
+ * Regular tier. */
+export const FALLBACK_GRADING_COST = 80;
 
-export type Verdict = "worth" | "borderline" | "skip";
-
-export type GradingAnalysis = {
-  raw: number;
-  cost: number;
-  /** Odds left over after 10–6: graded below a 6, treated as worth raw. */
-  belowOdds: number;
-  expectedValue: number;
-  /** Expected value minus raw value minus the grading cost. */
-  expectedProfit: number;
-  /** The chance of a 10 needed to break even, keeping the other grades in
-   * proportion; null when no chance of a 10 gets there (or none is needed). */
-  breakEvenTen: number | null;
-  /** The grade with the highest chance, for the prediction record. */
-  likelyGrade: string | null;
-  verdict: Verdict;
-};
-
-export type GradingInput = {
-  values: GradeMap;
-  odds: GradeMap;
-  cost: number;
-};
-
-/** Why an analysis can't run yet, or null when it can. */
-export function missingInputs({ values, odds }: GradingInput): string | null {
-  if (values.raw === undefined) return "Enter what it's worth raw.";
-  const total = GRADES.reduce((s, g) => s + (odds[g] ?? 0), 0);
-  if (total === 0) return "Enter your chance of at least one grade.";
-  if (total > 100) return `Your chances add up to ${total}% — keep them at 100% or under.`;
-  const unpriced = GRADES.filter((g) => (odds[g] ?? 0) > 0 && values[g] === undefined);
-  if (unpriced.length > 0) {
-    return `Enter a value for ${unpriced.map((g) => `PSA ${g}`).join(", ")} — you've given it a chance.`;
-  }
-  return null;
+/** Value after grading minus what it was worth raw and the fee — how much
+ * grading itself added. A sold card counts what it sold for. Null until both
+ * values are known. */
+export function gainVsRaw(item: Item): number | null {
+  const raw = item.grade_values?.raw;
+  const after =
+    item.sale_date && item.sale_payout !== null
+      ? Number(item.sale_payout)
+      : item.est_value === null
+        ? null
+        : Number(item.est_value);
+  if (raw === undefined || after === null) return null;
+  return after - raw - Number(item.grading_cost ?? 0);
 }
 
-export function analyse(input: GradingInput): GradingAnalysis | null {
-  if (missingInputs(input)) return null;
-  const { values, odds, cost } = input;
-  const raw = values.raw;
+/** Totals for a group of cards that have been sent in. */
+export type MoneyTotals = {
+  cards: number;
+  /** What the cards themselves cost. */
+  cardCost: number;
+  fees: number;
+  /** cardCost + fees. */
+  spent: number;
+  sold: number;
+  /** Net payouts from the ones sold. */
+  revenue: number;
+  /** Revenue minus the all-in cost of the ones sold. */
+  profit: number;
+  /** All-in cost of the ones sold, so profit has a base for its return %. */
+  soldCost: number;
+  held: number;
+  /** Estimated value of graded cards still held (unvalued ones count 0). */
+  heldValue: number;
+  heldCost: number;
+  /** Cards in this group still at the grader. */
+  out: number;
+  gainVsRaw: number;
+  /** How many cards gainVsRaw covers. */
+  gainCount: number;
+};
 
-  const p = (g: string) => (odds[g] ?? 0) / 100;
-  const belowOdds = 1 - GRADES.reduce((s, g) => s + p(g), 0);
-  const expectedValue =
-    GRADES.reduce((s, g) => s + p(g) * (values[g] ?? 0), 0) + belowOdds * raw;
-  const expectedProfit = expectedValue - raw - cost;
-
-  // Expected value if it doesn't get a 10: the other outcomes, rescaled.
-  const notTen = 1 - p("10");
-  const evNotTen =
-    notTen > 0 ? (expectedValue - p("10") * (values["10"] ?? 0)) / notTen : raw;
-  const target = raw + cost;
-  const ten = values["10"];
-  let breakEvenTen: number | null = null;
-  if (ten !== undefined && ten > evNotTen) {
-    const need = (target - evNotTen) / (ten - evNotTen);
-    breakEvenTen = need <= 0 ? 0 : need <= 1 ? need : null;
-  }
-
-  let likelyGrade: string | null = null;
-  for (const g of GRADES) {
-    if ((odds[g] ?? 0) > 0 && (likelyGrade === null || p(g) > p(likelyGrade))) {
-      likelyGrade = g;
-    }
-  }
-
-  // Within a fifth of the fee either way is too close to call.
-  const margin = Math.max(cost * 0.2, 1);
-  const verdict: Verdict =
-    expectedProfit > margin ? "worth" : expectedProfit < -margin ? "skip" : "borderline";
-
+function empty(): MoneyTotals {
   return {
-    raw,
-    cost,
-    belowOdds,
-    expectedValue,
-    expectedProfit,
-    breakEvenTen,
-    likelyGrade,
-    verdict,
+    cards: 0,
+    cardCost: 0,
+    fees: 0,
+    spent: 0,
+    sold: 0,
+    revenue: 0,
+    profit: 0,
+    soldCost: 0,
+    held: 0,
+    heldValue: 0,
+    heldCost: 0,
+    out: 0,
+    gainVsRaw: 0,
+    gainCount: 0,
   };
 }
 
-/** The fee to judge a card by: what was actually paid once it's sent in,
- * otherwise the planned fee, otherwise the default. */
-export function feeFor(item: Item, defaultCost: number): number {
-  if (item.grading_cost !== null) return Number(item.grading_cost);
-  if (item.grade_plan_cost !== null) return Number(item.grade_plan_cost);
-  return defaultCost;
+function add(t: MoneyTotals, item: Item) {
+  const all = costBasis(item);
+  t.cards++;
+  t.cardCost += Number(item.purchase_price);
+  t.fees += Number(item.grading_cost ?? 0);
+  t.spent += all;
+  if (item.sale_date && item.sale_payout !== null) {
+    t.sold++;
+    t.revenue += Number(item.sale_payout);
+    t.profit += Number(item.sale_payout) - all;
+    t.soldCost += all;
+  } else if (item.grading_returned_at && !item.sale_date) {
+    t.held++;
+    t.heldValue += Number(item.est_value ?? 0);
+    t.heldCost += all;
+  } else if (!item.grading_returned_at) {
+    t.out++;
+  }
+  const g = gainVsRaw(item);
+  if (g !== null) {
+    t.gainVsRaw += g;
+    t.gainCount++;
+  }
 }
 
-/** Analysis straight from a saved item. */
-export function analyseItem(item: Item, defaultCost: number): GradingAnalysis | null {
-  return analyse({
-    values: item.grade_values ?? {},
-    odds: item.grade_odds ?? {},
-    cost: feeFor(item, defaultCost),
-  });
+export function totals(items: Item[]): MoneyTotals {
+  const t = empty();
+  for (const i of items) add(t, i);
+  return t;
 }
 
-export const VERDICT_LABEL: Record<Verdict, string> = {
-  worth: "Worth grading",
-  borderline: "Borderline",
-  skip: "Not worth it",
-};
+export type BreakdownRow = MoneyTotals & { key: string; label: string };
 
-/** Grading fee to start a new card on: the most recent fee you entered, or
- * PSA's Regular tier when there's no history yet. */
-export const FALLBACK_GRADING_COST = 80;
+/** Group cards by `keyOf` (null = leave the card out) into totals rows. */
+export function breakdown(
+  items: Item[],
+  keyOf: (i: Item) => string | null,
+  labelOf: (key: string) => string = (k) => k
+): BreakdownRow[] {
+  const groups = new Map<string, MoneyTotals>();
+  for (const i of items) {
+    const k = keyOf(i);
+    if (k === null) continue;
+    if (!groups.has(k)) groups.set(k, empty());
+    add(groups.get(k)!, i);
+  }
+  return [...groups.entries()].map(([key, t]) => ({ ...t, key, label: labelOf(key) }));
+}
+
+/** Return on what was spent, as a fraction; null with nothing spent. */
+export function returnRate(profit: number, cost: number): number | null {
+  return cost > 0 ? profit / cost : null;
+}
+
+/** "10", "9.5", "Authentic" — best grades first, words last. */
+export function compareGrades(a: string, b: string): number {
+  const na = Number(a);
+  const nb = Number(b);
+  const fa = Number.isFinite(na);
+  const fb = Number.isFinite(nb);
+  if (fa && fb) return nb - na;
+  if (fa) return -1;
+  if (fb) return 1;
+  return a.localeCompare(b);
+}

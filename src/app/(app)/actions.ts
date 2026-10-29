@@ -1571,6 +1571,89 @@ export async function markGradeReturned(
   return { notice: "Marked as returned." };
 }
 
+const resultSchema = z.object({
+  submitted_at: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Date sent is required"),
+  returned_at: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Date back is required"),
+  company: z.string().trim().min(1, "Pick a grading company"),
+  grade: z.string().trim().min(1, "Enter the grade it got"),
+  grade_predicted: optionalText,
+  cert_number: optionalText,
+  grading_cost: moneyField,
+  raw_value: optionalMoneyField,
+  est_value: optionalMoneyField,
+});
+
+/** Correct the record of a card that's back from grading: dates, grades,
+ * the fee, and the raw and current values its gain is worked out from. */
+export async function updateGradingResult(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const { supabase, user } = await requireUser();
+  const id = String(formData.get("id") ?? "");
+  if (!id) return { error: "Missing item id." };
+
+  const parsed = resultSchema.safeParse({
+    submitted_at: formData.get("submitted_at"),
+    returned_at: formData.get("returned_at"),
+    company: formData.get("company"),
+    grade: formData.get("grade"),
+    grade_predicted: formData.get("grade_predicted"),
+    cert_number: formData.get("cert_number"),
+    grading_cost: formData.get("grading_cost"),
+    raw_value: formData.get("raw_value"),
+    est_value: formData.get("est_value"),
+  });
+  if (!parsed.success) {
+    return { error: firstError(parsed.error), values: formValues(formData) };
+  }
+  const d = parsed.data;
+  if (d.returned_at < d.submitted_at) {
+    return { error: "It can't come back before it was sent.", values: formValues(formData) };
+  }
+
+  // The raw value lives in grade_values with the per-grade prices; keep those.
+  const { data: current, error: readError } = await supabase
+    .from("items")
+    .select("grade_values")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .not("grading_returned_at", "is", null)
+    .maybeSingle();
+  if (readError) return { error: dbError(readError.message), values: formValues(formData) };
+  if (!current) return { error: "This card isn't back from grading.", values: formValues(formData) };
+  const values: GradeMap = { ...((current.grade_values ?? {}) as GradeMap) };
+  if (d.raw_value === null) delete values.raw;
+  else values.raw = d.raw_value;
+
+  const { error } = await supabase
+    .from("items")
+    .update({
+      grading_submitted_at: d.submitted_at,
+      grading_returned_at: d.returned_at,
+      grade_company: d.company,
+      grade: d.grade,
+      grade_predicted: d.grade_predicted,
+      cert_number: d.cert_number,
+      grading_cost: d.grading_cost,
+      grade_values: Object.keys(values).length > 0 ? values : null,
+      est_value: d.est_value,
+    })
+    .eq("id", id)
+    .eq("user_id", user.id);
+  if (error) return { error: dbError(error.message), values: formValues(formData) };
+
+  revalidateGrading(id);
+  revalidatePath("/sales");
+  return { notice: "Saved." };
+}
+
 /** Undo a submission entered by mistake: the card goes back to being a
  * candidate and its grading fee comes off its cost. */
 export async function cancelGradingSubmission(formData: FormData) {

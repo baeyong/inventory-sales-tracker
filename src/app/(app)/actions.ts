@@ -1372,15 +1372,16 @@ const submissionSchema = z.object({
     .trim()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Date sent is required"),
   company: z.string().trim().min(1, "Pick a grading company"),
-  cost: z.coerce
+  total_cost: z.coerce
     .number({ error: "Enter the grading cost" })
     .min(0, "Grading cost can't be negative"),
 });
 
-/** Send cards to the grader. `cost` is per card — what grading that one card
- * cost (tier plus its share of shipping) — and it joins the card's cost.
- * Each card's raw value is taken from its current value unless it already
- * has one, so the gain from grading can be measured later. */
+/** Send cards to the grader. `total_cost` is what the grader charged for the
+ * whole submission; it's split evenly (to the cent) across the cards sent and
+ * each share joins that card's cost. Each card's raw value is taken from its
+ * current value unless it already has one, so the gain from grading can be
+ * measured later. */
 export async function sendToGrading(
   ids: unknown,
   patch: unknown
@@ -1390,7 +1391,7 @@ export async function sendToGrading(
   if (!idsParsed.success) return { error: "Pick at least one card." };
   const parsed = submissionSchema.safeParse(patch);
   if (!parsed.success) return { error: firstError(parsed.error) };
-  const { submitted_at, company, cost } = parsed.data;
+  const { submitted_at, company, total_cost } = parsed.data;
 
   // Only raw, unsold cards that aren't already out.
   const { data: rows, error: readError } = await supabase
@@ -1406,7 +1407,9 @@ export async function sendToGrading(
     return { error: "None of those cards can be sent — they're sold, graded or already out." };
   }
 
-  for (const r of rows) {
+  // Split across the cards actually sent, so skipped ones don't take a share.
+  const shares = splitPayout(total_cost, rows.length);
+  for (const [k, r] of rows.entries()) {
     const values = (r.grade_values ?? {}) as GradeMap;
     const raw =
       values.raw !== undefined ? values.raw : r.est_value === null ? null : Number(r.est_value);
@@ -1416,7 +1419,7 @@ export async function sendToGrading(
         plan_to_grade: true,
         grading_submitted_at: submitted_at,
         grade_company: company,
-        grading_cost: cost,
+        grading_cost: shares[k],
         grade_values: withRaw(r.grade_values, raw),
       })
       .eq("id", r.id)
@@ -1438,7 +1441,7 @@ export async function sendCardToGrading(
   const res = await sendToGrading([id], {
     submitted_at: formData.get("submitted_at"),
     company: formData.get("company"),
-    cost: formData.get("cost"),
+    total_cost: formData.get("cost"),
   });
   if (res.error) return { error: res.error, values: formValues(formData) };
   return { notice: "Sent to grading." };

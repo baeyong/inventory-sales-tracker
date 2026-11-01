@@ -68,7 +68,8 @@ export function ToGrade({
   const [pending, startTransition] = useTransition();
   const [date, setDate] = useState(today);
   const [company, setCompany] = useState("PSA");
-  const [cost, setCost] = useState(String(defaultCost));
+  // What the grader charged for the whole submission, split across the cards.
+  const [total, setTotal] = useState("");
 
   const rows = [...items].sort((a, b) => a.name.localeCompare(b.name));
   const pickedCost = rows
@@ -97,7 +98,8 @@ export function ToGrade({
     });
   }
 
-  const feeTotal = (Number(cost) || 0) * selected.size;
+  const totalN = total.trim() === "" ? null : Number(total);
+  const each = totalN !== null && Number.isFinite(totalN) ? totalN / selected.size : null;
 
   return (
     <section>
@@ -185,25 +187,32 @@ export function ToGrade({
                 </select>
               </label>
               <label className="inline-flex items-center gap-1.5 text-[13px]">
-                $
+                Total $
                 <input
                   type="number"
                   step="0.01"
                   min="0"
-                  value={cost}
-                  onChange={(e) => setCost(e.target.value)}
-                  aria-label="Grading fee per card"
-                  className="w-20 rounded-full border-0 bg-dock-2 px-3 py-[7px] text-[13px] text-white"
+                  value={total}
+                  onChange={(e) => setTotal(e.target.value)}
+                  placeholder={String(defaultCost * selected.size)}
+                  aria-label="Total grading charge for this submission"
+                  className="w-24 rounded-full border-0 bg-dock-2 px-3 py-[7px] text-[13px] text-white placeholder:text-dock-muted"
                 />
-                <span className="text-dock-muted">each · {formatMoney(feeTotal)}</span>
+                <span className="text-dock-muted">
+                  {each === null ? "what the grader charged" : `${formatMoney(each)} each`}
+                </span>
               </label>
               <button
                 type="button"
-                disabled={pending}
+                disabled={pending || each === null}
                 className={dockPrimary}
                 onClick={() =>
                   run(() =>
-                    sendToGrading([...selected], { submitted_at: date, company, cost })
+                    sendToGrading([...selected], {
+                      submitted_at: date,
+                      company,
+                      total_cost: total,
+                    })
                   )
                 }
               >

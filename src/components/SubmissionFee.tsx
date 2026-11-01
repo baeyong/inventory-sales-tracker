@@ -9,13 +9,11 @@ import { btnRow, btnText } from "@/lib/ui";
 /** "Edit fee" on a submission row: change the total charge and it's re-split
  * across every card in the batch. */
 export default function SubmissionFee({
-  submittedAt,
-  company,
+  submissionId,
   total,
   cards,
 }: {
-  submittedAt: string;
-  company: string | null;
+  submissionId: string;
   total: number;
   cards: number;
 }) {
@@ -48,8 +46,7 @@ export default function SubmissionFee({
     setError(null);
     startTransition(async () => {
       const res = await updateSubmissionFee({
-        submitted_at: submittedAt,
-        company,
+        submission_id: submissionId,
         total_cost: value,
       });
       if (res.error) {

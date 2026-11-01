@@ -48,19 +48,34 @@ export default async function GradingPage() {
   ];
 
   // A batch is the cards sent to one company on one day.
-  // A blank company part means none was recorded.
-  const batchParts = (key: string) => {
-    const [date, company] = key.split("|");
-    return { date, company: company === "" ? null : company };
-  };
-  const byBatch = breakdown(
-    sent,
-    (i) => `${i.grading_submitted_at}|${i.grade_company ?? ""}`,
-    (k) => {
-      const { date, company } = batchParts(k);
-      return `${formatDate(date)} · ${company ?? "—"}`;
-    }
-  ).sort((a, b) => b.key.localeCompare(a.key));
+  // A submission is the cards sent in together, sharing one submission_id.
+  // Named by its earliest sent date and its company.
+  const batchKey = (i: Item) => i.submission_id ?? `${i.grading_submitted_at}|${i.grade_company ?? ""}`;
+  const batchInfo = new Map<string, { date: string; company: string | null }>();
+  for (const i of sent) {
+    const k = batchKey(i);
+    const prev = batchInfo.get(k);
+    const date = i.grading_submitted_at!;
+    if (!prev || date < prev.date) batchInfo.set(k, { date, company: i.grade_company });
+  }
+  const byBatch = breakdown(sent, batchKey, (k) => {
+    const b = batchInfo.get(k)!;
+    return `${formatDate(b.date)} · ${b.company ?? "—"}`;
+  }).sort((a, b) => {
+    const da = batchInfo.get(a.key)!.date;
+    const db = batchInfo.get(b.key)!.date;
+    return da !== db ? db.localeCompare(da) : a.key.localeCompare(b.key);
+  });
+  // Same-day submissions to the same company would read alike; number them.
+  const labelCounts = new Map<string, number>();
+  for (const r of byBatch) labelCounts.set(r.label, (labelCounts.get(r.label) ?? 0) + 1);
+  const seen = new Map<string, number>();
+  for (const r of [...byBatch].reverse()) {
+    if ((labelCounts.get(r.label) ?? 0) < 2) continue;
+    const n = (seen.get(r.label) ?? 0) + 1;
+    seen.set(r.label, n);
+    r.label = `${r.label} (#${n})`;
+  }
   const byGrade = breakdown(back, (i) =>
     `${i.grade_company ?? ""} ${i.grade ?? ""}`.trim() || null
   ).sort((a, b) => {
@@ -87,17 +102,16 @@ export default async function GradingPage() {
         description="Each batch sent to a grader on the same day, newest first."
         rows={byBatch}
         firstColumn="Sent"
-        rowAction={(r) => {
-          const { date, company } = batchParts(r.key);
-          return (
+        rowAction={(r) =>
+          // Rows without an ID are from before migration 0017 was run.
+          r.key.includes("|") ? null : (
             <SubmissionFee
-              submittedAt={date}
-              company={company}
+              submissionId={r.key}
               total={Math.round(r.fees * 100) / 100}
               cards={r.cards}
             />
-          );
-        }}
+          )
+        }
       />
       <BreakdownTable
         title="By grade"

@@ -1234,7 +1234,7 @@ const ITEM_COLUMNS = [
   "market_platform",
   "market_search",
   "grading_cost", "grade_plan_cost", "plan_to_grade", "grade_values", "grade_odds", "grade_pop",
-  "grading_submitted_at", "grading_returned_at", "grade_predicted",
+  "grading_submitted_at", "submission_id", "grading_returned_at", "grade_predicted",
   "cert_number",
   "created_at", "updated_at",
 ] as const;
@@ -1409,6 +1409,8 @@ export async function sendToGrading(
 
   // Split across the cards actually sent, so skipped ones don't take a share.
   const shares = splitPayout(total_cost, rows.length);
+  // One ID for the whole batch: it's what groups them as a submission.
+  const submissionId = crypto.randomUUID();
   for (const [k, r] of rows.entries()) {
     const values = (r.grade_values ?? {}) as GradeMap;
     const raw =
@@ -1418,6 +1420,7 @@ export async function sendToGrading(
       .update({
         plan_to_grade: true,
         grading_submitted_at: submitted_at,
+        submission_id: submissionId,
         grade_company: company,
         grading_cost: shares[k],
         grade_values: withRaw(r.grade_values, raw),
@@ -1433,33 +1436,29 @@ export async function sendToGrading(
 }
 
 const submissionFeeSchema = z.object({
-  submitted_at: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Missing the date sent"),
-  // Null for cards sent before a company was recorded.
-  company: z.string().nullable(),
+  submission_id: z.string().uuid("Missing the submission"),
   total_cost: z.coerce
     .number({ error: "Enter the total charge" })
     .min(0, "Grading cost can't be negative"),
 });
 
-/** Correct what a whole submission cost — the cards sent to one company on
- * one day — and re-split the total evenly across all of them, whether
- * they're still out or back. */
+/** Correct what a whole submission cost and re-split the total evenly
+ * across all of its cards, whether they're still out or back. */
 export async function updateSubmissionFee(
   patch: unknown
 ): Promise<{ error?: string; updated?: number }> {
   const { supabase, user } = await requireUser();
   const parsed = submissionFeeSchema.safeParse(patch);
   if (!parsed.success) return { error: firstError(parsed.error) };
-  const { submitted_at, company, total_cost } = parsed.data;
+  const { submission_id, total_cost } = parsed.data;
 
-  let query = supabase
+  // Oldest first, so the extra pennies land on the same cards every time.
+  const { data: rows, error: readError } = await supabase
     .from("items")
     .select("id")
     .eq("user_id", user.id)
-    .eq("grading_submitted_at", submitted_at);
-  query = company === null ? query.is("grade_company", null) : query.eq("grade_company", company);
-  // Oldest first, so the extra pennies land on the same cards every time.
-  const { data: rows, error: readError } = await query.order("created_at", { ascending: true });
+    .eq("submission_id", submission_id)
+    .order("created_at", { ascending: true });
   if (readError) return { error: dbError(readError.message) };
   if (!rows || rows.length === 0) return { error: "Couldn't find that submission." };
 
@@ -1648,6 +1647,7 @@ export async function cancelGradingSubmission(formData: FormData) {
     .from("items")
     .update({
       grading_submitted_at: null,
+      submission_id: null,
       grading_cost: null,
     })
     .eq("id", id)

@@ -6,7 +6,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { matchImportRows, type MatchCandidate } from "@/lib/importMapping";
 import { splitPayout } from "@/lib/money";
-import { FALLBACK_GRADING_COST, GRADES } from "@/lib/grading";
+import { FALLBACK_GRADING_COST } from "@/lib/grading";
 import type { GradeMap } from "@/lib/types";
 
 export type FormState = {
@@ -1234,7 +1234,7 @@ const ITEM_COLUMNS = [
   "market_platform",
   "market_search",
   "grading_cost", "grade_plan_cost", "plan_to_grade", "grade_values", "grade_odds", "grade_pop",
-  "grading_submitted_at", "grading_returned_at", "grade_predicted",
+  "grading_submitted_at", "submission_id", "grading_returned_at", "grade_predicted",
   "cert_number",
   "created_at", "updated_at",
 ] as const;
@@ -1318,99 +1318,34 @@ export async function restoreBackup(
 function revalidateGrading(id?: string) {
   revalidatePath("/grading");
   revalidatePath("/inventory");
+  revalidatePath("/sales");
   revalidatePath("/dashboard");
   if (id) revalidatePath(`/inventory/${id}`);
 }
 
-/** One numeric field from the calculator: blank means "not entered". */
-function gradeNumber(
-  raw: FormDataEntryValue | null,
-  label: string,
-  max?: number
-): { value?: number; error?: string } {
-  const s = typeof raw === "string" ? raw.trim() : "";
-  if (s === "") return {};
-  const n = Number(s);
-  if (!Number.isFinite(n) || n < 0) return { error: `${label} must be 0 or more.` };
-  if (max !== undefined && n > max) return { error: `${label} can't be over ${max}.` };
-  return { value: n };
-}
-
-/** Collect `${prefix}${key}` fields into a map, skipping blanks. */
-function gradeMap(
-  formData: FormData,
-  prefix: string,
-  keys: readonly string[],
-  label: (k: string) => string,
-  max?: number
-): { map: GradeMap | null; error?: string } {
-  const map: GradeMap = {};
-  for (const k of keys) {
-    const r = gradeNumber(formData.get(prefix + k), label(k), max);
-    if (r.error) return { map: null, error: r.error };
-    if (r.value !== undefined) map[k] = r.value;
-  }
-  return { map: Object.keys(map).length > 0 ? map : null };
-}
-
-const gradeLabel = (k: string) => (k === "raw" ? "Raw value" : `PSA ${k}`);
-
-/** The fee a new card starts on: the last one entered, paid or planned. */
+/** The fee a new submission starts on: the last one you paid. */
 export async function getDefaultGradingCost(): Promise<number> {
   const { supabase } = await requireUser();
   const { data, error } = await supabase
     .from("items")
-    .select("grading_cost, grade_plan_cost")
-    .or("grading_cost.not.is.null,grade_plan_cost.not.is.null")
-    .order("updated_at", { ascending: false })
+    .select("grading_cost")
+    .not("grading_cost", "is", null)
+    .order("grading_submitted_at", { ascending: false })
     .limit(1);
   if (error) throw new Error(error.message);
-  const last = data?.[0];
-  const fee = last?.grading_cost ?? last?.grade_plan_cost;
+  const fee = data?.[0]?.grading_cost;
   return fee === null || fee === undefined ? FALLBACK_GRADING_COST : Number(fee);
 }
 
-/** Save the "worth grading?" inputs from a card's grading panel. */
-export async function saveGradingPlan(
-  _prev: FormState,
-  formData: FormData
-): Promise<FormState> {
-  const { supabase, user } = await requireUser();
-  const id = String(formData.get("id") ?? "");
-  if (!id) return { error: "Missing item id." };
-
-  const values = gradeMap(formData, "value_", ["raw", ...GRADES], gradeLabel);
-  const odds = gradeMap(formData, "odds_", GRADES, (k) => `Chance of PSA ${k}`, 100);
-  const pop = gradeMap(formData, "pop_", GRADES, (k) => `PSA ${k} pop`);
-  const fee = gradeNumber(formData.get("grade_plan_cost"), "Grading cost");
-  const bad = values.error ?? odds.error ?? pop.error ?? fee.error;
-  if (bad) return { error: bad, values: formValues(formData) };
-
-  const totalOdds = Object.values(odds.map ?? {}).reduce((s, n) => s + n, 0);
-  if (totalOdds > 100) {
-    return {
-      error: `Your chances add up to ${totalOdds}% — keep them at 100% or under.`,
-      values: formValues(formData),
-    };
-  }
-
-  const { error } = await supabase
-    .from("items")
-    .update({
-      grade_values: values.map,
-      grade_odds: odds.map,
-      grade_pop: pop.map,
-      grade_plan_cost: fee.value ?? null,
-    })
-    .eq("id", id)
-    .eq("user_id", user.id);
-  if (error) return { error: dbError(error.message), values: formValues(formData) };
-
-  revalidateGrading(id);
-  return { notice: "Saved." };
+/** Store the raw value inside grade_values, leaving any other keys alone. */
+function withRaw(current: unknown, raw: number | null): GradeMap | null {
+  const values: GradeMap = { ...((current ?? {}) as GradeMap) };
+  if (raw === null) delete values.raw;
+  else values.raw = raw;
+  return Object.keys(values).length > 0 ? values : null;
 }
 
-/** Add cards to, or take them off, the list of cards you plan to grade. */
+/** Add cards to, or take them off, the to-grade list. */
 export async function setPlanToGrade(
   ids: unknown,
   on: boolean
@@ -1437,13 +1372,16 @@ const submissionSchema = z.object({
     .trim()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Date sent is required"),
   company: z.string().trim().min(1, "Pick a grading company"),
-  cost: z.coerce
+  total_cost: z.coerce
     .number({ error: "Enter the grading cost" })
     .min(0, "Grading cost can't be negative"),
 });
 
-/** Send cards to the grader. `cost` is per card — what grading that one card
- * cost (tier plus its share of shipping) — and it joins the card's cost. */
+/** Send cards to the grader. `total_cost` is what the grader charged for the
+ * whole submission; it's split evenly (to the cent) across the cards sent and
+ * each share joins that card's cost. Each card's raw value is taken from its
+ * current value unless it already has one, so the gain from grading can be
+ * measured later. */
 export async function sendToGrading(
   ids: unknown,
   patch: unknown
@@ -1453,12 +1391,12 @@ export async function sendToGrading(
   if (!idsParsed.success) return { error: "Pick at least one card." };
   const parsed = submissionSchema.safeParse(patch);
   if (!parsed.success) return { error: firstError(parsed.error) };
-  const { submitted_at, company, cost } = parsed.data;
+  const { submitted_at, company, total_cost } = parsed.data;
 
   // Only raw, unsold cards that aren't already out.
   const { data: rows, error: readError } = await supabase
     .from("items")
-    .select("id, grade_odds")
+    .select("id, est_value, grade_values")
     .in("id", idsParsed.data)
     .eq("user_id", user.id)
     .is("sale_date", null)
@@ -1469,23 +1407,23 @@ export async function sendToGrading(
     return { error: "None of those cards can be sent — they're sold, graded or already out." };
   }
 
-  for (const r of rows) {
-    // The prediction is fixed now, so later edits don't rewrite history.
-    const odds = (r.grade_odds ?? {}) as GradeMap;
-    let predicted: string | null = null;
-    for (const g of GRADES) {
-      if ((odds[g] ?? 0) > 0 && (predicted === null || odds[g] > odds[predicted])) {
-        predicted = g;
-      }
-    }
+  // Split across the cards actually sent, so skipped ones don't take a share.
+  const shares = splitPayout(total_cost, rows.length);
+  // One ID for the whole batch: it's what groups them as a submission.
+  const submissionId = crypto.randomUUID();
+  for (const [k, r] of rows.entries()) {
+    const values = (r.grade_values ?? {}) as GradeMap;
+    const raw =
+      values.raw !== undefined ? values.raw : r.est_value === null ? null : Number(r.est_value);
     const { error } = await supabase
       .from("items")
       .update({
         plan_to_grade: true,
         grading_submitted_at: submitted_at,
+        submission_id: submissionId,
         grade_company: company,
-        grading_cost: cost,
-        grade_predicted: predicted,
+        grading_cost: shares[k],
+        grade_values: withRaw(r.grade_values, raw),
       })
       .eq("id", r.id)
       .eq("user_id", user.id);
@@ -1493,9 +1431,50 @@ export async function sendToGrading(
   }
 
   revalidateGrading();
-  revalidatePath("/sales");
   for (const r of rows) revalidatePath(`/inventory/${r.id}`);
   return { sent: rows.length };
+}
+
+const submissionFeeSchema = z.object({
+  submission_id: z.string().uuid("Missing the submission"),
+  total_cost: z.coerce
+    .number({ error: "Enter the total charge" })
+    .min(0, "Grading cost can't be negative"),
+});
+
+/** Correct what a whole submission cost and re-split the total evenly
+ * across all of its cards, whether they're still out or back. */
+export async function updateSubmissionFee(
+  patch: unknown
+): Promise<{ error?: string; updated?: number }> {
+  const { supabase, user } = await requireUser();
+  const parsed = submissionFeeSchema.safeParse(patch);
+  if (!parsed.success) return { error: firstError(parsed.error) };
+  const { submission_id, total_cost } = parsed.data;
+
+  // Oldest first, so the extra pennies land on the same cards every time.
+  const { data: rows, error: readError } = await supabase
+    .from("items")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("submission_id", submission_id)
+    .order("created_at", { ascending: true });
+  if (readError) return { error: dbError(readError.message) };
+  if (!rows || rows.length === 0) return { error: "Couldn't find that submission." };
+
+  const shares = splitPayout(total_cost, rows.length);
+  for (const [k, r] of rows.entries()) {
+    const { error } = await supabase
+      .from("items")
+      .update({ grading_cost: shares[k] })
+      .eq("id", r.id)
+      .eq("user_id", user.id);
+    if (error) return { error: dbError(error.message) };
+  }
+
+  revalidateGrading();
+  for (const r of rows) revalidatePath(`/inventory/${r.id}`);
+  return { updated: rows.length };
 }
 
 /** Send one card from its own page. */
@@ -1507,7 +1486,7 @@ export async function sendCardToGrading(
   const res = await sendToGrading([id], {
     submitted_at: formData.get("submitted_at"),
     company: formData.get("company"),
-    cost: formData.get("cost"),
+    total_cost: formData.get("cost"),
   });
   if (res.error) return { error: res.error, values: formValues(formData) };
   return { notice: "Sent to grading." };
@@ -1521,11 +1500,12 @@ const returnSchema = z.object({
   company: z.string().trim().min(1, "Pick a grading company"),
   grade: z.string().trim().min(1, "Enter the grade it got"),
   cert_number: optionalText,
+  raw_value: optionalMoneyField,
   est_value: optionalMoneyField,
 });
 
-/** A card is back from the grader: it becomes a graded card worth what it
- * got, and the Grading tab keeps the record. */
+/** A card is back from the grader: it becomes a graded card worth what it's
+ * worth now, and the Grading tab keeps the record. */
 export async function markGradeReturned(
   _prev: FormState,
   formData: FormData
@@ -1539,6 +1519,7 @@ export async function markGradeReturned(
     company: formData.get("company"),
     grade: formData.get("grade"),
     cert_number: formData.get("cert_number"),
+    raw_value: formData.get("raw_value"),
     est_value: formData.get("est_value"),
   });
   if (!parsed.success) {
@@ -1546,28 +1527,37 @@ export async function markGradeReturned(
   }
   const d = parsed.data;
 
-  const { error, count } = await supabase
+  const { data: current, error: readError } = await supabase
     .from("items")
-    .update(
-      {
-        grading_returned_at: d.returned_at,
-        condition: "graded",
-        grade_company: d.company,
-        grade: d.grade,
-        cert_number: d.cert_number,
-        est_value: d.est_value,
-        plan_to_grade: false,
-      },
-      { count: "exact" }
-    )
+    .select("grade_values, grading_submitted_at")
     .eq("id", id)
     .eq("user_id", user.id)
-    .not("grading_submitted_at", "is", null);
+    .not("grading_submitted_at", "is", null)
+    .is("grading_returned_at", null)
+    .maybeSingle();
+  if (readError) return { error: dbError(readError.message), values: formValues(formData) };
+  if (!current) return { error: "This card isn't out for grading.", values: formValues(formData) };
+  if (d.returned_at < String(current.grading_submitted_at)) {
+    return { error: "It can't come back before it was sent.", values: formValues(formData) };
+  }
+
+  const { error } = await supabase
+    .from("items")
+    .update({
+      grading_returned_at: d.returned_at,
+      condition: "graded",
+      grade_company: d.company,
+      grade: d.grade,
+      cert_number: d.cert_number,
+      grade_values: withRaw(current.grade_values, d.raw_value),
+      est_value: d.est_value,
+      plan_to_grade: false,
+    })
+    .eq("id", id)
+    .eq("user_id", user.id);
   if (error) return { error: dbError(error.message), values: formValues(formData) };
-  if (!count) return { error: "This card isn't out for grading.", values: formValues(formData) };
 
   revalidateGrading(id);
-  revalidatePath("/sales");
   return { notice: "Marked as returned." };
 }
 
@@ -1582,14 +1572,13 @@ const resultSchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Date back is required"),
   company: z.string().trim().min(1, "Pick a grading company"),
   grade: z.string().trim().min(1, "Enter the grade it got"),
-  grade_predicted: optionalText,
   cert_number: optionalText,
   grading_cost: moneyField,
   raw_value: optionalMoneyField,
   est_value: optionalMoneyField,
 });
 
-/** Correct the record of a card that's back from grading: dates, grades,
+/** Correct the record of a card that's back from grading: dates, grade,
  * the fee, and the raw and current values its gain is worked out from. */
 export async function updateGradingResult(
   _prev: FormState,
@@ -1604,7 +1593,6 @@ export async function updateGradingResult(
     returned_at: formData.get("returned_at"),
     company: formData.get("company"),
     grade: formData.get("grade"),
-    grade_predicted: formData.get("grade_predicted"),
     cert_number: formData.get("cert_number"),
     grading_cost: formData.get("grading_cost"),
     raw_value: formData.get("raw_value"),
@@ -1618,7 +1606,6 @@ export async function updateGradingResult(
     return { error: "It can't come back before it was sent.", values: formValues(formData) };
   }
 
-  // The raw value lives in grade_values with the per-grade prices; keep those.
   const { data: current, error: readError } = await supabase
     .from("items")
     .select("grade_values")
@@ -1628,9 +1615,6 @@ export async function updateGradingResult(
     .maybeSingle();
   if (readError) return { error: dbError(readError.message), values: formValues(formData) };
   if (!current) return { error: "This card isn't back from grading.", values: formValues(formData) };
-  const values: GradeMap = { ...((current.grade_values ?? {}) as GradeMap) };
-  if (d.raw_value === null) delete values.raw;
-  else values.raw = d.raw_value;
 
   const { error } = await supabase
     .from("items")
@@ -1639,10 +1623,9 @@ export async function updateGradingResult(
       grading_returned_at: d.returned_at,
       grade_company: d.company,
       grade: d.grade,
-      grade_predicted: d.grade_predicted,
       cert_number: d.cert_number,
       grading_cost: d.grading_cost,
-      grade_values: Object.keys(values).length > 0 ? values : null,
+      grade_values: withRaw(current.grade_values, d.raw_value),
       est_value: d.est_value,
     })
     .eq("id", id)
@@ -1650,12 +1633,11 @@ export async function updateGradingResult(
   if (error) return { error: dbError(error.message), values: formValues(formData) };
 
   revalidateGrading(id);
-  revalidatePath("/sales");
   return { notice: "Saved." };
 }
 
-/** Undo a submission entered by mistake: the card goes back to being a
- * candidate and its grading fee comes off its cost. */
+/** Undo a submission entered by mistake: the card goes back on the to-grade
+ * list and its grading fee comes off its cost. */
 export async function cancelGradingSubmission(formData: FormData) {
   const { supabase, user } = await requireUser();
   const id = String(formData.get("id") ?? "");
@@ -1665,8 +1647,8 @@ export async function cancelGradingSubmission(formData: FormData) {
     .from("items")
     .update({
       grading_submitted_at: null,
+      submission_id: null,
       grading_cost: null,
-      grade_predicted: null,
     })
     .eq("id", id)
     .eq("user_id", user.id)
@@ -1674,5 +1656,4 @@ export async function cancelGradingSubmission(formData: FormData) {
   if (error) throw new Error(dbError(error.message));
 
   revalidateGrading(id);
-  revalidatePath("/sales");
 }

@@ -69,6 +69,7 @@ export interface Item {
   grade_odds: GradeMap | null; // % chance of each grade
   grade_pop: GradeMap | null; // pop counts per grade, for reference
   grading_submitted_at: string | null; // YYYY-MM-DD sent to the grader
+  submission_id: string | null; // shared by the cards sent in together
   grading_returned_at: string | null; // YYYY-MM-DD back from the grader
   grade_predicted: string | null; // the grade expected when sent in
   cert_number: string | null;

@@ -62,12 +62,6 @@ export default async function GradingPage() {
     const [cb, gb] = [b.key.split(" ")[0], b.key.split(" ").slice(1).join(" ")];
     return ca !== cb ? ca.localeCompare(cb) : compareGrades(ga, gb);
   });
-  const byCompany = breakdown(sent, (i) => i.grade_company ?? "Unknown").sort(
-    (a, b) => b.spent - a.spent
-  );
-  const bySet = breakdown(sent, (i) => i.card_set?.trim() || "No set").sort(
-    (a, b) => b.spent - a.spent
-  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -94,17 +88,6 @@ export default async function GradingPage() {
         rows={byGrade}
         firstColumn="Grade"
         showShare
-      />
-      <BreakdownTable
-        title="By company"
-        rows={byCompany}
-        firstColumn="Company"
-      />
-      <BreakdownTable
-        title="By set"
-        description="Which sets are paying off."
-        rows={bySet}
-        firstColumn="Set"
       />
       <GradedCards items={back} />
     </div>

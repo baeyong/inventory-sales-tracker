@@ -5,6 +5,7 @@ import { getDefaultGradingCost } from "@/app/(app)/actions";
 import PageHero, { type Stat } from "@/components/PageHero";
 import { AtGrader, ToGrade } from "@/components/GradingBoard";
 import { BreakdownTable, GradedCards, MoneyOverview } from "@/components/GradingTables";
+import SubmissionFee from "@/components/SubmissionFee";
 import { signedMoney } from "@/lib/ui";
 
 export const metadata = { title: "Grading · Resale Tracker" };
@@ -47,12 +48,17 @@ export default async function GradingPage() {
   ];
 
   // A batch is the cards sent to one company on one day.
+  // A blank company part means none was recorded.
+  const batchParts = (key: string) => {
+    const [date, company] = key.split("|");
+    return { date, company: company === "" ? null : company };
+  };
   const byBatch = breakdown(
     sent,
-    (i) => `${i.grading_submitted_at}|${i.grade_company ?? "—"}`,
+    (i) => `${i.grading_submitted_at}|${i.grade_company ?? ""}`,
     (k) => {
-      const [date, company] = k.split("|");
-      return `${formatDate(date)} · ${company}`;
+      const { date, company } = batchParts(k);
+      return `${formatDate(date)} · ${company ?? "—"}`;
     }
   ).sort((a, b) => b.key.localeCompare(a.key));
   const byGrade = breakdown(back, (i) =>
@@ -81,6 +87,17 @@ export default async function GradingPage() {
         description="Each batch sent to a grader on the same day, newest first."
         rows={byBatch}
         firstColumn="Sent"
+        rowAction={(r) => {
+          const { date, company } = batchParts(r.key);
+          return (
+            <SubmissionFee
+              submittedAt={date}
+              company={company}
+              total={Math.round(r.fees * 100) / 100}
+              cards={r.cards}
+            />
+          );
+        }}
       />
       <BreakdownTable
         title="By grade"

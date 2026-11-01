@@ -110,6 +110,7 @@ export function BreakdownTable({
   rows,
   firstColumn,
   showShare = false,
+  rowAction,
 }: {
   title: string;
   description?: string;
@@ -117,6 +118,8 @@ export function BreakdownTable({
   firstColumn: string;
   /** Adds each group's share of the cards, e.g. the gem rate by grade. */
   showShare?: boolean;
+  /** A control at the end of each row, e.g. editing a submission's fee. */
+  rowAction?: (row: BreakdownRow) => React.ReactNode;
 }) {
   if (rows.length === 0) return null;
   const total = rows.reduce((s, r) => s + r.cards, 0);
@@ -144,7 +147,12 @@ export function BreakdownTable({
                 <th className={right}>Profit</th>
                 <th className={right}>Return</th>
                 <th className={right}>Held value</th>
-                <th className={`${right} pr-5`}>Added by grading</th>
+                <th className={`${right} ${rowAction ? "" : "pr-5"}`}>Added by grading</th>
+                {rowAction && (
+                  <th className={`${th} pr-5`}>
+                    <span className="sr-only">Actions</span>
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -165,9 +173,10 @@ export function BreakdownTable({
                   </td>
                   <td className={num}>{r.sold > 0 ? pct(returnRate(r.profit, r.soldCost)) : "—"}</td>
                   <td className={num}>{r.held > 0 ? formatMoney(r.heldValue) : "—"}</td>
-                  <td className={`${num} pr-5`}>
+                  <td className={`${num} ${rowAction ? "" : "pr-5"}`}>
                     {r.gainCount > 0 ? <Money n={r.gainVsRaw} signed /> : "—"}
                   </td>
+                  {rowAction && <td className={`${td} pr-5 text-right`}>{rowAction(r)}</td>}
                 </tr>
               ))}
             </tbody>

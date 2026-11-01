@@ -1432,6 +1432,52 @@ export async function sendToGrading(
   return { sent: rows.length };
 }
 
+const submissionFeeSchema = z.object({
+  submitted_at: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Missing the date sent"),
+  // Null for cards sent before a company was recorded.
+  company: z.string().nullable(),
+  total_cost: z.coerce
+    .number({ error: "Enter the total charge" })
+    .min(0, "Grading cost can't be negative"),
+});
+
+/** Correct what a whole submission cost — the cards sent to one company on
+ * one day — and re-split the total evenly across all of them, whether
+ * they're still out or back. */
+export async function updateSubmissionFee(
+  patch: unknown
+): Promise<{ error?: string; updated?: number }> {
+  const { supabase, user } = await requireUser();
+  const parsed = submissionFeeSchema.safeParse(patch);
+  if (!parsed.success) return { error: firstError(parsed.error) };
+  const { submitted_at, company, total_cost } = parsed.data;
+
+  let query = supabase
+    .from("items")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("grading_submitted_at", submitted_at);
+  query = company === null ? query.is("grade_company", null) : query.eq("grade_company", company);
+  // Oldest first, so the extra pennies land on the same cards every time.
+  const { data: rows, error: readError } = await query.order("created_at", { ascending: true });
+  if (readError) return { error: dbError(readError.message) };
+  if (!rows || rows.length === 0) return { error: "Couldn't find that submission." };
+
+  const shares = splitPayout(total_cost, rows.length);
+  for (const [k, r] of rows.entries()) {
+    const { error } = await supabase
+      .from("items")
+      .update({ grading_cost: shares[k] })
+      .eq("id", r.id)
+      .eq("user_id", user.id);
+    if (error) return { error: dbError(error.message) };
+  }
+
+  revalidateGrading();
+  for (const r of rows) revalidatePath(`/inventory/${r.id}`);
+  return { updated: rows.length };
+}
+
 /** Send one card from its own page. */
 export async function sendCardToGrading(
   _prev: FormState,

@@ -15,6 +15,7 @@ import {
   formatDate,
   formatMoney,
   isCardCategory,
+  isSneakerCategory,
   type CardCondition,
   type Item,
 } from "@/lib/types";
@@ -93,8 +94,12 @@ export default function ItemForm({
   // After a failed submit the server echoes what was typed; prefer that over
   // the stored item so the form never loses the user's input.
   const v = state?.values;
+  const [styleCode, setStyleCode] = useState<string>(
+    v?.style_code ?? item?.style_code ?? ""
+  );
 
   const isCard = isCardCategory(category);
+  const isSneaker = isSneakerCategory(category);
   // When a card is pulled from a box, its cost is the box price split across
   // everything pulled from that box — so the price field is derived, not typed.
   const box = boxes.find((b) => b.id === rippedFrom) ?? null;
@@ -107,6 +112,7 @@ export default function ItemForm({
     ? marketLink({
         ...item,
         category,
+        style_code: styleCode || null,
         market_platform: marketPlatform || null,
         market_search: marketSearch || null,
       })
@@ -223,7 +229,8 @@ export default function ItemForm({
                 </datalist>
                 <span className={fieldHint}>
                   Categories containing &ldquo;card&rdquo; get set, number and
-                  grade fields.
+                  grade fields; &ldquo;sneaker&rdquo; or &ldquo;shoe&rdquo; get a
+                  style code.
                 </span>
               </label>
               {!item && (
@@ -254,6 +261,26 @@ export default function ItemForm({
               Listed for sale
             </label>
           </section>
+
+          {isSneaker && (
+            <section className="card px-6 py-[22px]">
+              <h2 className={cardTitle}>Sneaker details</h2>
+              <label className="block max-w-xs">
+                <span className={fieldLabel}>Style code</span>
+                <input
+                  name="style_code"
+                  value={styleCode}
+                  onChange={(e) => setStyleCode(e.target.value)}
+                  placeholder="DZ5485-612"
+                  autoCapitalize="characters"
+                  className={`${field} tnum`}
+                />
+                <span className={fieldHint}>
+                  The value lookup searches this code instead of the name.
+                </span>
+              </label>
+            </section>
+          )}
 
           {isCard && (
             <section className="card px-6 py-[22px]">
@@ -502,7 +529,10 @@ export default function ItemForm({
                     name="market_search"
                     value={marketSearch}
                     onChange={(e) => setMarketSearch(e.target.value)}
-                    placeholder={autoQuery(item) || "item name"}
+                    placeholder={
+                      autoQuery({ ...item, category, style_code: styleCode || null }) ||
+                      "item name"
+                    }
                     className={field}
                   />
                   <span className={fieldHint}>

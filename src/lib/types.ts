@@ -6,6 +6,11 @@ export function isCardCategory(category: string): boolean {
   return /card/i.test(category);
 }
 
+/** Sneaker fields (style code) apply when the category is about shoes. */
+export function isSneakerCategory(category: string): boolean {
+  return /sneaker|shoe/i.test(category);
+}
+
 export const DEFAULT_CATEGORIES = [
   "General",
   "Personal Collection",
@@ -49,6 +54,7 @@ export interface Item {
   condition: CardCondition | null;
   grade_company: string | null;
   grade: string | null;
+  style_code: string | null; // sneaker SKU, e.g. "DZ5485-612"
   sale_date: string | null; // YYYY-MM-DD, null = unsold
   sale_platform: string | null;
   sale_payout: number | null;

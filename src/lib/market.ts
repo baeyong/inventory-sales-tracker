@@ -1,4 +1,4 @@
-import { isCardCategory, type Item } from "@/lib/types";
+import { isCardCategory, isSneakerCategory, type Item } from "@/lib/types";
 
 // A marketplace we can deep-link a search to. `build` turns a query into the
 // URL that opens that search. All free to view — no API, no scraping.
@@ -67,13 +67,16 @@ export const PLATFORM_OPTIONS: Platform[] = [
 /** Sensible default marketplace for a category when the item hasn't overridden
  * it. Cards/most goods → eBay sold comps; sneakers → StockX. */
 export function defaultPlatformForCategory(category: string): string {
-  if (/sneaker|shoe/i.test(category)) return "stockx";
+  if (isSneakerCategory(category)) return "stockx";
   return "ebay_sold";
 }
 
 /** Search words built from an item's own fields — the starting point the user
- * can tweak. */
+ * can tweak. A sneaker with a style code searches that code alone: it's an
+ * exact match on StockX/GOAT, where the name is only a fuzzy one. */
 export function autoQuery(item: Item): string {
+  const style = item.style_code?.trim();
+  if (style && isSneakerCategory(item.category)) return style;
   const parts: (string | null | undefined)[] = [item.name];
   if (isCardCategory(item.category)) {
     if (item.card_number) parts.push(`#${item.card_number}`);

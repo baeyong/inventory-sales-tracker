@@ -17,6 +17,7 @@ export function matchesSearch(item: Item, query: string): boolean {
     item.player,
     item.grade_company,
     item.grade,
+    item.style_code,
     item.description,
   ]
     .filter(Boolean)

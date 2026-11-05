@@ -1,9 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+
+/** Space kept between the button and the open card, and from the screen edge. */
+const GAP = 8;
 
 /** A button that opens a small card of actions — the "⋯" on a row, or "More"
- * on the selection bar. Clicking any item marked `data-close` shuts it. */
+ * on the selection bar. Clicking any item marked `data-close` shuts it.
+ *
+ * The open card is positioned against the screen (fixed), not its parent, so
+ * a scrolling table can't clip it: on the last row it used to hang below the
+ * table and turn into a scrollbar. It opens below the button, or above when
+ * there isn't room. */
 export default function Menu({
   label,
   buttonClass,
@@ -17,12 +25,46 @@ export default function Menu({
   buttonClass: string;
   buttonContent: ReactNode;
   align?: "left" | "right";
-  /** Open above the button — for the bar pinned to the bottom of the screen. */
+  /** Prefer opening above the button — for the bar pinned to the bottom of
+   * the screen. It still flips if there's no room. */
   up?: boolean;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  // Place the card next to the button, flipping up or down to fit, and keep
+  // it there while the page or a table scrolls. Writes the style directly so
+  // there's no extra render (and no flash in the wrong spot).
+  useLayoutEffect(() => {
+    if (!open) return;
+    function place() {
+      const button = buttonRef.current;
+      const panel = panelRef.current;
+      if (!button || !panel) return;
+      const b = button.getBoundingClientRect();
+      const h = panel.offsetHeight;
+      const w = panel.offsetWidth;
+      const below = window.innerHeight - b.bottom - GAP;
+      const above = b.top - GAP;
+      const goUp = up ? above >= h || above > below : below < h && above > below;
+      const top = goUp ? b.top - GAP - h : b.bottom + GAP;
+      let left = align === "right" ? b.right - w : b.left;
+      left = Math.min(Math.max(left, GAP), window.innerWidth - w - GAP);
+      panel.style.top = `${Math.max(top, GAP)}px`;
+      panel.style.left = `${left}px`;
+      panel.style.visibility = "visible";
+    }
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true); // capture: tables scroll too
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
+  }, [open, align, up]);
 
   useEffect(() => {
     if (!open) return;
@@ -43,6 +85,7 @@ export default function Menu({
   return (
     <div ref={ref} className="relative inline-block text-left">
       <button
+        ref={buttonRef}
         type="button"
         aria-label={label}
         aria-expanded={open}
@@ -53,12 +96,13 @@ export default function Menu({
       </button>
       {open && (
         <div
+          ref={panelRef}
           onClick={(e) => {
             if ((e.target as HTMLElement).closest("[data-close]")) setOpen(false);
           }}
-          className={`card absolute z-40 min-w-52 p-1.5 text-ink ${
-            align === "right" ? "right-0" : "left-0"
-          } ${up ? "bottom-full mb-2" : "top-full mt-2"}`}
+          // Hidden until placed, so it never shows at the wrong spot.
+          style={{ top: 0, left: 0, visibility: "hidden" }}
+          className="card fixed z-50 max-h-[calc(100vh-16px)] min-w-52 overflow-y-auto p-1.5 text-ink"
         >
           {children}
         </div>

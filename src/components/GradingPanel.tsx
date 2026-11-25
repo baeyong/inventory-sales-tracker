@@ -109,7 +109,7 @@ function SendForm({
     <form action={action} className="flex flex-col gap-4">
       <input type="hidden" name="id" value={item.id} />
       <h3 className={cardTitle}>Send to grading</h3>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
         <label>
           <span className={fieldLabel}>Date sent</span>
           <input
@@ -125,7 +125,7 @@ function SendForm({
           <CompanySelect defaultValue={v?.company ?? item.grade_company ?? "PSA"} />
         </label>
         <label>
-          <span className={fieldLabel}>Fee for this card</span>
+          <span className={fieldLabel}>Grader&rsquo;s fee</span>
           <input
             name="cost"
             type="number"
@@ -136,9 +136,21 @@ function SendForm({
             className={`${field} tnum`}
           />
         </label>
+        <label>
+          <span className={fieldLabel}>Shipping</span>
+          <input
+            name="shipping"
+            type="number"
+            step="0.01"
+            min="0"
+            defaultValue={v?.shipping ?? ""}
+            placeholder="0"
+            className={`${field} tnum`}
+          />
+        </label>
       </div>
       <p className="-mt-2 text-xs text-muted">
-        The fee is added to what this card cost you.{" "}
+        The fee and shipping are added to what this card cost you.{" "}
         {item.est_value !== null
           ? `Its value now (${formatMoney(Number(item.est_value))}) is kept as the raw value, to measure what grading adds.`
           : "Set its value first if you want to measure what grading adds."}
@@ -169,7 +181,10 @@ function ReturnForm({ item, today }: { item: Item; today: string }) {
         <h3 className={cardTitle}>Back from grading</h3>
         <p className="-mt-2 text-xs text-muted">
           Sent {formatDate(item.grading_submitted_at)} ·{" "}
-          {formatMoney(Number(item.grading_cost ?? 0))} fee, already in its cost
+          {formatMoney(Number(item.grading_cost ?? 0))} fee
+          {Number(item.grading_shipping ?? 0) > 0 &&
+            ` + ${formatMoney(Number(item.grading_shipping))} shipping`}
+          , already in its cost
         </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <label>
@@ -262,6 +277,7 @@ function ReturnedSummary({ item }: { item: Item }) {
 
   const raw = item.grade_values?.raw ?? null;
   const fee = Number(item.grading_cost ?? 0);
+  const shipping = Number(item.grading_shipping ?? 0);
   const sold = item.sale_date !== null && item.sale_payout !== null;
   const after = sold
     ? Number(item.sale_payout)
@@ -279,6 +295,7 @@ function ReturnedSummary({ item }: { item: Item }) {
       />
       <Fact label="All-in cost" value={formatMoney(costBasis(item))} />
       <Fact label="Fee" value={formatMoney(fee)} />
+      <Fact label="Shipping" value={formatMoney(shipping)} />
       <Fact label="Raw value" value={raw === null ? "—" : formatMoney(raw)} />
       <Fact
         label={sold ? "Sold for" : "Worth now"}
@@ -300,7 +317,8 @@ function ReturnedSummary({ item }: { item: Item }) {
         Sent {formatDate(item.grading_submitted_at)}, back{" "}
         {formatDate(item.grading_returned_at)}
         {item.cert_number && <> · cert {item.cert_number}</>}. Gain vs raw is{" "}
-        {sold ? "what it sold for" : "its value now"} minus the raw value and the fee.
+        {sold ? "what it sold for" : "its value now"} minus the raw value, the fee and
+        shipping.
       </p>
       <div className="col-span-2 sm:col-span-3">
         <button type="button" className={btnSecondary} onClick={() => setEditing(true)}>
@@ -327,6 +345,9 @@ function ResultForm({ item, onDone }: { item: Item; onDone: () => void }) {
     v?.raw_value ?? (initialRaw === undefined ? "" : String(initialRaw))
   );
   const [fee, setFee] = useState(v?.grading_cost ?? String(item.grading_cost ?? 0));
+  const [shipping, setShipping] = useState(
+    v?.grading_shipping ?? (item.grading_shipping === null ? "" : String(item.grading_shipping))
+  );
   const [now, setNow] = useState(
     v?.est_value ?? (item.est_value === null ? "" : String(item.est_value))
   );
@@ -336,7 +357,10 @@ function ResultForm({ item, onDone }: { item: Item; onDone: () => void }) {
   // A sold card's gain is measured on what it sold for, not the value field.
   const after = sold ? Number(item.sale_payout) : num(now);
   const rawN = num(raw);
-  const gain = rawN !== null && after !== null ? after - rawN - (num(fee) ?? 0) : null;
+  const gain =
+    rawN !== null && after !== null
+      ? after - rawN - (num(fee) ?? 0) - (num(shipping) ?? 0)
+      : null;
 
   return (
     <form action={action} className="flex flex-col gap-4">
@@ -396,6 +420,20 @@ function ResultForm({ item, onDone }: { item: Item; onDone: () => void }) {
             className={`${field} tnum`}
           />
           <span className={fieldHint}>Part of the card&rsquo;s cost.</span>
+        </label>
+        <label>
+          <span className={fieldLabel}>Shipping</span>
+          <input
+            name="grading_shipping"
+            type="number"
+            step="0.01"
+            min="0"
+            value={shipping}
+            onChange={(e) => setShipping(e.target.value)}
+            placeholder="0"
+            className={`${field} tnum`}
+          />
+          <span className={fieldHint}>This card&rsquo;s share of sending it in.</span>
         </label>
         <label>
           <span className={fieldLabel}>Raw value</span>

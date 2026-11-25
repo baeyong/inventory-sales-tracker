@@ -64,6 +64,7 @@ export function MoneyOverview({ t }: { t: MoneyTotals }) {
       <Panel title="Money in">
         <Line label="Cards">{formatMoney(t.cardCost)}</Line>
         <Line label="Grading fees">{formatMoney(t.fees)}</Line>
+        <Line label="Shipping">{formatMoney(t.shipping)}</Line>
         <Line label={`Total · ${t.cards} cards`} strong>
           {formatMoney(t.spent)}
         </Line>
@@ -88,7 +89,7 @@ export function MoneyOverview({ t }: { t: MoneyTotals }) {
         note={
           t.gainCount === 0
             ? "Needs a raw value on the graded cards."
-            : "Graded value or sale, minus raw value and fee."
+            : "Graded value or sale, minus raw value, fee and shipping."
         }
       >
         <Line label={`Over ${t.gainCount} cards`} strong>
@@ -97,7 +98,7 @@ export function MoneyOverview({ t }: { t: MoneyTotals }) {
         <Line label="Per card">
           {t.gainCount === 0 ? "—" : <Money n={t.gainVsRaw / t.gainCount} signed />}
         </Line>
-        <Line label="Fees paid">{formatMoney(t.fees)}</Line>
+        <Line label="Fees + shipping">{formatMoney(t.fees + t.shipping)}</Line>
       </Panel>
     </div>
   );
@@ -134,7 +135,7 @@ export function BreakdownTable({
       </div>
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] border-collapse text-[13px]">
+          <table className="w-full min-w-[860px] border-collapse text-[13px]">
             <thead>
               <tr className="bg-inset">
                 <th className={`${th} pl-5`}>{firstColumn}</th>
@@ -142,6 +143,7 @@ export function BreakdownTable({
                 {showShare && <th className={right}>Share</th>}
                 <th className={right}>Spent</th>
                 <th className={right}>Fees</th>
+                <th className={right}>Shipping</th>
                 <th className={right}>Sold</th>
                 <th className={right}>Payouts</th>
                 <th className={right}>Profit</th>
@@ -166,6 +168,7 @@ export function BreakdownTable({
                   {showShare && <td className={num}>{pct(total > 0 ? r.cards / total : null)}</td>}
                   <td className={num}>{formatMoney(r.spent)}</td>
                   <td className={`${num} text-ink-2`}>{formatMoney(r.fees)}</td>
+                  <td className={`${num} text-ink-2`}>{formatMoney(r.shipping)}</td>
                   <td className={num}>{r.sold}</td>
                   <td className={num}>{r.sold > 0 ? formatMoney(r.revenue) : "—"}</td>
                   <td className={`${num} font-semibold`}>
@@ -211,6 +214,7 @@ export function GradedCards({ items }: { items: Item[] }) {
                 <th className={th}>Grade</th>
                 <th className={right}>Cost</th>
                 <th className={right}>Fee</th>
+                <th className={right}>Shipping</th>
                 <th className={right}>Raw value</th>
                 <th className={right}>Sold for / worth</th>
                 <th className={right}>Added by grading</th>
@@ -244,6 +248,7 @@ export function GradedCards({ items }: { items: Item[] }) {
                     </td>
                     <td className={`${num} text-ink-2`}>{formatMoney(Number(i.purchase_price))}</td>
                     <td className={`${num} text-ink-2`}>{formatMoney(Number(i.grading_cost ?? 0))}</td>
+                    <td className={`${num} text-ink-2`}>{formatMoney(Number(i.grading_shipping ?? 0))}</td>
                     <td className={num}>{raw === undefined ? "—" : formatMoney(raw)}</td>
                     <td className={num}>
                       {after === null ? "—" : formatMoney(after)}

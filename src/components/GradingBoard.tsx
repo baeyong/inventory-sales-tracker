@@ -68,8 +68,10 @@ export function ToGrade({
   const [pending, startTransition] = useTransition();
   const [date, setDate] = useState(today);
   const [company, setCompany] = useState("PSA");
-  // What the grader charged for the whole submission, split across the cards.
+  // What the grader charged for the whole submission, and what shipping it in
+  // cost; each is split across the cards.
   const [total, setTotal] = useState("");
+  const [shipping, setShipping] = useState("");
 
   const rows = [...items].sort((a, b) => a.name.localeCompare(b.name));
   const pickedCost = rows
@@ -99,7 +101,12 @@ export function ToGrade({
   }
 
   const totalN = total.trim() === "" ? null : Number(total);
-  const each = totalN !== null && Number.isFinite(totalN) ? totalN / selected.size : null;
+  // Shipping can be left blank (none).
+  const shippingN = shipping.trim() === "" ? 0 : Number(shipping);
+  const each =
+    totalN !== null && Number.isFinite(totalN) && Number.isFinite(shippingN)
+      ? (totalN + shippingN) / selected.size
+      : null;
 
   return (
     <section>
@@ -187,7 +194,7 @@ export function ToGrade({
                 </select>
               </label>
               <label className="inline-flex items-center gap-1.5 text-[13px]">
-                Total $
+                Grader $
                 <input
                   type="number"
                   step="0.01"
@@ -195,11 +202,24 @@ export function ToGrade({
                   value={total}
                   onChange={(e) => setTotal(e.target.value)}
                   placeholder={String(defaultCost * selected.size)}
-                  aria-label="Total grading charge for this submission"
+                  aria-label="What the grader charged for this submission"
                   className="w-24 rounded-full border-0 bg-dock-2 px-3 py-[7px] text-[13px] text-white placeholder:text-dock-muted"
                 />
+              </label>
+              <label className="inline-flex items-center gap-1.5 text-[13px]">
+                Shipping $
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={shipping}
+                  onChange={(e) => setShipping(e.target.value)}
+                  placeholder="0"
+                  aria-label="What shipping the submission in cost"
+                  className="w-20 rounded-full border-0 bg-dock-2 px-3 py-[7px] text-[13px] text-white placeholder:text-dock-muted"
+                />
                 <span className="text-dock-muted">
-                  {each === null ? "what the grader charged" : `${formatMoney(each)} each`}
+                  {each === null ? "totals for the whole submission" : `${formatMoney(each)} each`}
                 </span>
               </label>
               <button
@@ -212,6 +232,7 @@ export function ToGrade({
                       submitted_at: date,
                       company,
                       total_cost: total,
+                      shipping_cost: shipping,
                     })
                   )
                 }
@@ -265,7 +286,7 @@ export function AtGrader({ items, today }: { items: Item[]; today: string }) {
         <h2 className={`${cardTitle} !mb-0`}>At the grader</h2>
         {out.length > 0 && (
           <span className="text-[13px] text-muted">
-            {out.length} out · {formatMoney(tiedUp)} tied up, fees included
+            {out.length} out · {formatMoney(tiedUp)} tied up, fees and shipping included
           </span>
         )}
       </div>
@@ -281,7 +302,7 @@ export function AtGrader({ items, today }: { items: Item[]; today: string }) {
               <Cell label="Company">{item.grade_company ?? "—"}</Cell>
               <Cell label="Sent">{formatDate(item.grading_submitted_at)}</Cell>
               <Cell label="Out for">{daysBetween(item.grading_submitted_at!, today)} days</Cell>
-              <Cell label="Cost + fee">{formatMoney(costBasis(item))}</Cell>
+              <Cell label="All-in cost">{formatMoney(costBasis(item))}</Cell>
               <Link href={`/inventory/${item.id}#grading`} className={btnRow}>
                 Mark returned
               </Link>

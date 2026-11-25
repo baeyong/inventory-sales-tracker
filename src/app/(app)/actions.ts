@@ -1233,7 +1233,7 @@ const ITEM_COLUMNS = [
   "opened_at", "ripped_from_id", "invested_at", "personal_at",
   "market_platform",
   "market_search",
-  "grading_cost", "grade_plan_cost", "plan_to_grade", "grade_values", "grade_odds", "grade_pop",
+  "grading_cost", "grading_shipping", "grade_plan_cost", "plan_to_grade", "grade_values", "grade_odds", "grade_pop",
   "grading_submitted_at", "submission_id", "grading_returned_at", "grade_predicted",
   "cert_number",
   "created_at", "updated_at",
@@ -1366,6 +1366,14 @@ export async function setPlanToGrade(
   return { updated: count ?? 0 };
 }
 
+/** Shipping is optional: blank (or missing) means none. */
+const shippingField = z.preprocess(
+  (v) => (v === null || v === undefined || String(v).trim() === "" ? 0 : v),
+  z.coerce
+    .number({ error: "Enter a valid shipping cost" })
+    .min(0, "Shipping can't be negative")
+);
+
 const submissionSchema = z.object({
   submitted_at: z
     .string()
@@ -1375,13 +1383,14 @@ const submissionSchema = z.object({
   total_cost: z.coerce
     .number({ error: "Enter the grading cost" })
     .min(0, "Grading cost can't be negative"),
+  shipping_cost: shippingField,
 });
 
 /** Send cards to the grader. `total_cost` is what the grader charged for the
- * whole submission; it's split evenly (to the cent) across the cards sent and
- * each share joins that card's cost. Each card's raw value is taken from its
- * current value unless it already has one, so the gain from grading can be
- * measured later. */
+ * whole submission and `shipping_cost` what it cost to ship it in; each is
+ * split evenly (to the cent) across the cards sent and the shares join each
+ * card's cost. Each card's raw value is taken from its current value unless it
+ * already has one, so the gain from grading can be measured later. */
 export async function sendToGrading(
   ids: unknown,
   patch: unknown
@@ -1391,9 +1400,10 @@ export async function sendToGrading(
   if (!idsParsed.success) return { error: "Pick at least one card." };
   const parsed = submissionSchema.safeParse(patch);
   if (!parsed.success) return { error: firstError(parsed.error) };
-  const { submitted_at, company, total_cost } = parsed.data;
+  const { submitted_at, company, total_cost, shipping_cost } = parsed.data;
 
-  // Only raw, unsold cards that aren't already out.
+  // Only raw, unsold cards that aren't already out. Oldest first, the same
+  // order a later fee edit re-splits in, so the extra pennies stay put.
   const { data: rows, error: readError } = await supabase
     .from("items")
     .select("id, est_value, grade_values")
@@ -1401,7 +1411,8 @@ export async function sendToGrading(
     .eq("user_id", user.id)
     .is("sale_date", null)
     .is("grading_submitted_at", null)
-    .or("condition.is.null,condition.eq.raw");
+    .or("condition.is.null,condition.eq.raw")
+    .order("created_at", { ascending: true });
   if (readError) return { error: dbError(readError.message) };
   if (!rows || rows.length === 0) {
     return { error: "None of those cards can be sent — they're sold, graded or already out." };
@@ -1409,6 +1420,7 @@ export async function sendToGrading(
 
   // Split across the cards actually sent, so skipped ones don't take a share.
   const shares = splitPayout(total_cost, rows.length);
+  const shippingShares = splitPayout(shipping_cost, rows.length);
   // One ID for the whole batch: it's what groups them as a submission.
   const submissionId = crypto.randomUUID();
   for (const [k, r] of rows.entries()) {
@@ -1423,6 +1435,7 @@ export async function sendToGrading(
         submission_id: submissionId,
         grade_company: company,
         grading_cost: shares[k],
+        grading_shipping: shippingShares[k],
         grade_values: withRaw(r.grade_values, raw),
       })
       .eq("id", r.id)
@@ -1440,17 +1453,19 @@ const submissionFeeSchema = z.object({
   total_cost: z.coerce
     .number({ error: "Enter the total charge" })
     .min(0, "Grading cost can't be negative"),
+  shipping_cost: shippingField,
 });
 
-/** Correct what a whole submission cost and re-split the total evenly
- * across all of its cards, whether they're still out or back. */
+/** Correct what a whole submission cost — the grader's charge and the
+ * shipping — and re-split each evenly across all of its cards, whether
+ * they're still out or back. */
 export async function updateSubmissionFee(
   patch: unknown
 ): Promise<{ error?: string; updated?: number }> {
   const { supabase, user } = await requireUser();
   const parsed = submissionFeeSchema.safeParse(patch);
   if (!parsed.success) return { error: firstError(parsed.error) };
-  const { submission_id, total_cost } = parsed.data;
+  const { submission_id, total_cost, shipping_cost } = parsed.data;
 
   // Oldest first, so the extra pennies land on the same cards every time.
   const { data: rows, error: readError } = await supabase
@@ -1463,10 +1478,11 @@ export async function updateSubmissionFee(
   if (!rows || rows.length === 0) return { error: "Couldn't find that submission." };
 
   const shares = splitPayout(total_cost, rows.length);
+  const shippingShares = splitPayout(shipping_cost, rows.length);
   for (const [k, r] of rows.entries()) {
     const { error } = await supabase
       .from("items")
-      .update({ grading_cost: shares[k] })
+      .update({ grading_cost: shares[k], grading_shipping: shippingShares[k] })
       .eq("id", r.id)
       .eq("user_id", user.id);
     if (error) return { error: dbError(error.message) };
@@ -1487,6 +1503,7 @@ export async function sendCardToGrading(
     submitted_at: formData.get("submitted_at"),
     company: formData.get("company"),
     total_cost: formData.get("cost"),
+    shipping_cost: formData.get("shipping"),
   });
   if (res.error) return { error: res.error, values: formValues(formData) };
   return { notice: "Sent to grading." };
@@ -1574,6 +1591,7 @@ const resultSchema = z.object({
   grade: z.string().trim().min(1, "Enter the grade it got"),
   cert_number: optionalText,
   grading_cost: moneyField,
+  grading_shipping: shippingField,
   raw_value: optionalMoneyField,
   est_value: optionalMoneyField,
 });
@@ -1595,6 +1613,7 @@ export async function updateGradingResult(
     grade: formData.get("grade"),
     cert_number: formData.get("cert_number"),
     grading_cost: formData.get("grading_cost"),
+    grading_shipping: formData.get("grading_shipping"),
     raw_value: formData.get("raw_value"),
     est_value: formData.get("est_value"),
   });
@@ -1625,6 +1644,7 @@ export async function updateGradingResult(
       grade: d.grade,
       cert_number: d.cert_number,
       grading_cost: d.grading_cost,
+      grading_shipping: d.grading_shipping,
       grade_values: withRaw(current.grade_values, d.raw_value),
       est_value: d.est_value,
     })
@@ -1637,7 +1657,7 @@ export async function updateGradingResult(
 }
 
 /** Undo a submission entered by mistake: the card goes back on the to-grade
- * list and its grading fee comes off its cost. */
+ * list and its grading fee and shipping come off its cost. */
 export async function cancelGradingSubmission(formData: FormData) {
   const { supabase, user } = await requireUser();
   const id = String(formData.get("id") ?? "");
@@ -1649,6 +1669,7 @@ export async function cancelGradingSubmission(formData: FormData) {
       grading_submitted_at: null,
       submission_id: null,
       grading_cost: null,
+      grading_shipping: null,
     })
     .eq("id", id)
     .eq("user_id", user.id)

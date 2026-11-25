@@ -1,4 +1,4 @@
-import { costBasis, type Item } from "./types";
+import { costBasis, gradingSpend, type Item } from "./types";
 
 // Grading money: what went into graded cards and what came back out. Only real
 // figures — what was paid, sold for, or is held at its estimated value — and
@@ -18,9 +18,9 @@ export function gradingStage(item: Item): GradingStage | null {
  * Regular tier. */
 export const FALLBACK_GRADING_COST = 80;
 
-/** Value after grading minus what it was worth raw and the fee — how much
- * grading itself added. A sold card counts what it sold for. Null until both
- * values are known. */
+/** Value after grading minus what it was worth raw and what grading cost (fee
+ * and shipping) — how much grading itself added. A sold card counts what it
+ * sold for. Null until both values are known. */
 export function gainVsRaw(item: Item): number | null {
   const raw = item.grade_values?.raw;
   const after =
@@ -30,7 +30,7 @@ export function gainVsRaw(item: Item): number | null {
         ? null
         : Number(item.est_value);
   if (raw === undefined || after === null) return null;
-  return after - raw - Number(item.grading_cost ?? 0);
+  return after - raw - gradingSpend(item);
 }
 
 /** Totals for a group of cards that have been sent in. */
@@ -38,8 +38,11 @@ export type MoneyTotals = {
   cards: number;
   /** What the cards themselves cost. */
   cardCost: number;
+  /** What the grader charged. */
   fees: number;
-  /** cardCost + fees. */
+  /** Shipping paid to send the cards in. */
+  shipping: number;
+  /** cardCost + fees + shipping. */
   spent: number;
   sold: number;
   /** Net payouts from the ones sold. */
@@ -64,6 +67,7 @@ function empty(): MoneyTotals {
     cards: 0,
     cardCost: 0,
     fees: 0,
+    shipping: 0,
     spent: 0,
     sold: 0,
     revenue: 0,
@@ -83,6 +87,7 @@ function add(t: MoneyTotals, item: Item) {
   t.cards++;
   t.cardCost += Number(item.purchase_price);
   t.fees += Number(item.grading_cost ?? 0);
+  t.shipping += Number(item.grading_shipping ?? 0);
   t.spent += all;
   if (item.sale_date && item.sale_payout !== null) {
     t.sold++;

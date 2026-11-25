@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { matchImportRows, type MatchCandidate } from "@/lib/importMapping";
 import { splitPayout } from "@/lib/money";
 import { FALLBACK_GRADING_COST } from "@/lib/grading";
-import type { GradeMap } from "@/lib/types";
+import { isSneakerCategory, type GradeMap } from "@/lib/types";
 
 export type FormState = {
   error?: string;
@@ -94,10 +94,14 @@ const itemSchema = z
     grade_company: optionalText,
     grade: optionalText,
     plan_to_grade: z.boolean(),
+    style_code: optionalText,
     market_platform: optionalText,
     market_search: optionalText,
     ripped_from_id: optionalText,
   })
+  .transform((v) =>
+    isSneakerCategory(v.category) ? v : { ...v, style_code: null }
+  )
   .transform((v) =>
     /card/i.test(v.category)
       ? { ...v, condition: v.condition ?? "raw" }
@@ -149,6 +153,7 @@ function itemPayload(formData: FormData) {
     grade_company: formData.get("grade_company"),
     grade: formData.get("grade"),
     plan_to_grade: formData.get("plan_to_grade") === "on",
+    style_code: formData.get("style_code"),
     market_platform: formData.get("market_platform"),
     market_search: formData.get("market_search"),
     ripped_from_id: formData.get("ripped_from_id"),
@@ -1228,7 +1233,7 @@ const ITEM_COLUMNS = [
   "id", "category", "name", "description", "purchase_price", "purchase_date",
   "purchase_platform", "est_value", "listed", "quantity", "card_set",
   "card_number",
-  "player", "condition", "grade_company", "grade", "sale_date", "sale_platform",
+  "player", "condition", "grade_company", "grade", "style_code", "sale_date", "sale_platform",
   "sale_payout", "buyer", "payment_received", "shipped", "bundle_id",
   "opened_at", "ripped_from_id", "invested_at", "personal_at",
   "market_platform",

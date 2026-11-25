@@ -20,6 +20,7 @@ import {
   formatDate,
   formatMoney,
   isCardCategory,
+  isSneakerCategory,
   type Item,
 } from "@/lib/types";
 import { matchesSearch } from "@/lib/search";
@@ -76,6 +77,7 @@ function detailLine(item: Item): string {
   return [
     item.category,
     cardDetails(item),
+    isSneakerCategory(item.category) ? item.style_code : null,
     item.quantity > 1 ? `Qty ${item.quantity}` : null,
   ]
     .filter(Boolean)

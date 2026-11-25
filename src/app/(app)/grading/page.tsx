@@ -44,10 +44,9 @@ export default async function GradingPage() {
       tone: t.profit >= 0 ? "pos" : "neg",
     },
     { label: "Held value", value: formatMoney(t.heldValue) },
-    { label: "Fees", value: formatMoney(t.fees) },
+    { label: "Fees + shipping", value: formatMoney(t.fees + t.shipping) },
   ];
 
-  // A batch is the cards sent to one company on one day.
   // A submission is the cards sent in together, sharing one submission_id.
   // Named by its earliest sent date and its company.
   const batchKey = (i: Item) => i.submission_id ?? `${i.grading_submitted_at}|${i.grade_company ?? ""}`;
@@ -108,6 +107,7 @@ export default async function GradingPage() {
             <SubmissionFee
               submissionId={r.key}
               total={Math.round(r.fees * 100) / 100}
+              shipping={Math.round(r.shipping * 100) / 100}
               cards={r.cards}
             />
           )

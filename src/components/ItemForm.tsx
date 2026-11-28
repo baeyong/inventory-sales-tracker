@@ -122,7 +122,9 @@ export default function ItemForm({
       all.findIndex((x) => x.toLowerCase() === c.toLowerCase()) === i
   );
   // The box picker shows for cards, and whenever a box is already chosen.
-  const showPicker = boxes.length > 0 && (isCard || rippedFrom !== "");
+  // Items from a lot get their cost from the lot, never from a ripped box.
+  const showPicker =
+    !item?.lot_id && boxes.length > 0 && (isCard || rippedFrom !== "");
 
   const cost = item ? costBasis(item) : 0;
   const est = item?.est_value == null ? null : Number(item.est_value);
@@ -381,7 +383,24 @@ export default function ItemForm({
           <section className="card px-6 py-[22px]">
             <h2 className={cardTitle}>Purchase</h2>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              {box ? (
+              {item?.lot_id ? (
+                <div>
+                  <span className={fieldLabel}>Cost</span>
+                  <div className={`${field} tnum bg-inset text-ink-2`}>
+                    {formatMoney(Number(item.purchase_price))}
+                  </div>
+                  <input type="hidden" name="purchase_price" value={String(item.purchase_price)} />
+                  <span className={fieldHint}>
+                    Locked by its{" "}
+                    <Link href={`/lots/${item.lot_id}`} className="text-accent hover:underline">
+                      lot&rsquo;s allocation
+                    </Link>
+                    {item.writedown_cents > 0 &&
+                      ` · written down ${formatMoney(item.writedown_cents / 100)} at year end`}
+                    .
+                  </span>
+                </div>
+              ) : box ? (
                 <div>
                   <span className={fieldLabel}>Cost</span>
                   <div className={`${field} tnum bg-inset text-ink-2`}>

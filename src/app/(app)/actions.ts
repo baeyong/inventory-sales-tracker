@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { fetchAll } from "@/lib/supabase/fetchAll";
 import { matchImportRows, type MatchCandidate } from "@/lib/importMapping";
 import { splitPayout } from "@/lib/money";
 import { FALLBACK_GRADING_COST } from "@/lib/grading";
@@ -124,16 +125,60 @@ const itemSchema = z
       : { ...v, grade: null }
   );
 
-const saleSchema = z.object({
-  sale_date: z
-    .string()
-    .trim()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "Sale date is required"),
-  sale_platform: z.string().trim().min(1, "Platform is required"),
-  // Net payout may be negative when fees exceed the sale price.
-  sale_payout: z.coerce.number({ error: "Enter a valid amount" }),
-  buyer: optionalText,
-});
+// Blank → null; otherwise whole cents, 0 or more.
+const optionalCentsField = z
+  .string()
+  .nullable()
+  .transform((s) => (s ?? "").trim())
+  .transform((s) => (s === "" ? null : Math.round(Number(s) * 100)))
+  .pipe(
+    z
+      .number({ error: "Enter a valid amount" })
+      .int()
+      .min(0, "Amounts can't be negative")
+      .nullable()
+  );
+
+const saleSchema = z
+  .object({
+    sale_date: z
+      .string()
+      .trim()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Sale date is required"),
+    sale_platform: z.string().trim().min(1, "Platform is required"),
+    // Net payout may be negative when fees exceed the sale price. Ignored
+    // when a sale price is given — then it's price − fees − shipping.
+    sale_payout: z.string().nullable(),
+    buyer: optionalText,
+    sale_gross_cents: optionalCentsField,
+    sale_fees_cents: optionalCentsField,
+    sale_shipping_cents: optionalCentsField,
+  })
+  .transform((v, ctx) => {
+    if (v.sale_gross_cents !== null) {
+      const fees = v.sale_fees_cents ?? 0;
+      const shipping = v.sale_shipping_cents ?? 0;
+      return {
+        ...v,
+        sale_fees_cents: fees,
+        sale_shipping_cents: shipping,
+        sale_payout: (v.sale_gross_cents - fees - shipping) / 100,
+      };
+    }
+    const payout = Number((v.sale_payout ?? "").trim() || NaN);
+    if (!Number.isFinite(payout)) {
+      ctx.addIssue({ code: "custom", message: "Enter the net payout, or the sale price" });
+      return z.NEVER;
+    }
+    return { ...v, sale_payout: payout, sale_fees_cents: null, sale_shipping_cents: null };
+  });
+
+/** A sale with no gross / fees / shipping recorded — just its net payout. */
+const NO_BREAKDOWN = {
+  sale_gross_cents: null,
+  sale_fees_cents: null,
+  sale_shipping_cents: null,
+} as const;
 
 function itemPayload(formData: FormData) {
   return itemSchema.safeParse({
@@ -317,14 +362,23 @@ export async function updateItem(
   // to re-split both the box it left and the one it joined.
   const { data: prev } = await supabase
     .from("items")
-    .select("ripped_from_id, opened_at, plan_to_grade")
+    .select("ripped_from_id, opened_at, plan_to_grade, lot_id")
     .eq("id", id)
     .eq("user_id", user.id)
     .maybeSingle();
 
+  // An item opened out of a lot has its cost locked by the lot's allocation:
+  // the form can't change it (re-allocate from the lot instead), and it can't
+  // also be assigned to an old-style ripped box.
+  const patch: Partial<typeof parsed.data> = { ...parsed.data };
+  if (prev?.lot_id) {
+    delete patch.purchase_price;
+    delete patch.ripped_from_id;
+  }
+
   const { error } = await supabase
     .from("items")
-    .update(parsed.data)
+    .update(patch)
     .eq("id", id)
     .eq("user_id", user.id);
   if (error) {
@@ -333,7 +387,7 @@ export async function updateItem(
 
   const affected = new Set<string>();
   if (prev?.ripped_from_id) affected.add(prev.ripped_from_id as string);
-  if (parsed.data.ripped_from_id) affected.add(parsed.data.ripped_from_id);
+  if (!prev?.lot_id && parsed.data.ripped_from_id) affected.add(parsed.data.ripped_from_id);
   // Editing a ripped box's own price has to flow down to everything pulled
   // from it, otherwise the shares silently stop adding up.
   if (prev?.opened_at) affected.add(id);
@@ -392,6 +446,9 @@ export async function markSold(
     sale_platform: formData.get("sale_platform"),
     sale_payout: formData.get("sale_payout"),
     buyer: formData.get("buyer"),
+    sale_gross_cents: formData.get("sale_gross"),
+    sale_fees_cents: formData.get("sale_fees"),
+    sale_shipping_cents: formData.get("sale_shipping"),
   });
   if (!parsed.success) {
     return { error: firstError(parsed.error), values: formValues(formData) };
@@ -684,6 +741,7 @@ export async function bulkMarkSold(
         sale_payout: shares[i],
         buyer: p.data.buyer,
         bundle_id: bundleId,
+        ...NO_BREAKDOWN,
       })
       .eq("id", idsParsed.data[i])
       .is("sale_date", null) // don't re-sell an already-sold item
@@ -748,7 +806,7 @@ export async function bulkUpdateSale(
         sale_date: p.data.sale_date,
         sale_platform: p.data.sale_platform,
         buyer: p.data.buyer,
-        ...(shares && { sale_payout: shares[i] }),
+        ...(shares && { sale_payout: shares[i], ...NO_BREAKDOWN }),
         ...(p.data.bundle && { bundle_id: bundleId }),
       })
       .eq("id", idsParsed.data[i])
@@ -878,6 +936,7 @@ export async function bulkMarkUnsold(
         payment_received: false,
         shipped: false,
         bundle_id: null,
+        ...NO_BREAKDOWN,
       },
       { count: "exact" }
     )
@@ -898,7 +957,7 @@ export async function bulkMarkPersonal(
   ids: unknown,
   movedDate: unknown
 ): Promise<{ error?: string; moved?: number }> {
-  const { supabase, user } = await requireUser();
+  const { supabase } = await requireUser();
 
   const idsParsed = idListSchema.safeParse(ids);
   const dateParsed = z
@@ -911,42 +970,42 @@ export async function bulkMarkPersonal(
     return { error: dateParsed.error.issues[0]?.message ?? "Invalid date." };
   }
 
-  const { error, count } = await supabase
-    .from("items")
-    .update({ personal_at: dateParsed.data }, { count: "exact" })
-    .in("id", idsParsed.data)
-    .is("sale_date", null) // sold items aren't keepers
-    .is("opened_at", null) // neither is ripped product
-    .is("invested_at", null) // move a holding back to Inventory first
-    .eq("user_id", user.id);
+  // One database call moves them and records each transfer at its basis, so
+  // the move can't happen without the record. It skips sold items, ripped
+  // product, Investments (move those back first) and anything already kept.
+  const { data, error } = await supabase.rpc("move_to_personal", {
+    p_ids: idsParsed.data,
+    p_on: dateParsed.data,
+  });
   if (error) return { error: dbError(error.message) };
 
   revalidatePath("/inventory");
   revalidatePath("/collection");
   revalidatePath("/dashboard");
-  return { moved: count ?? 0 };
+  revalidatePath("/tax-report");
+  return { moved: Number(data ?? 0) };
 }
 
 /** Move a keeper back into Inventory. */
 export async function bulkUnmarkPersonal(
   ids: unknown
 ): Promise<{ error?: string; returned?: number }> {
-  const { supabase, user } = await requireUser();
+  const { supabase } = await requireUser();
 
   const parsed = idListSchema.safeParse(ids);
   if (!parsed.success) return { error: "No items selected." };
 
-  const { error, count } = await supabase
-    .from("items")
-    .update({ personal_at: null }, { count: "exact" })
-    .in("id", parsed.data)
-    .eq("user_id", user.id);
+  const { data, error } = await supabase.rpc("move_from_personal", {
+    p_ids: parsed.data,
+    p_on: new Date().toISOString().slice(0, 10),
+  });
   if (error) return { error: dbError(error.message) };
 
   revalidatePath("/inventory");
   revalidatePath("/collection");
   revalidatePath("/dashboard");
-  return { returned: count ?? 0 };
+  revalidatePath("/tax-report");
+  return { returned: Number(data ?? 0) };
 }
 
 /** Move items into Investments: long-term holds you don't plan to flip soon.
@@ -1122,6 +1181,7 @@ export async function markUnsold(formData: FormData) {
       payment_received: false,
       shipped: false,
       bundle_id: null,
+      ...NO_BREAKDOWN,
     })
     .eq("id", id)
     .eq("user_id", user.id);
@@ -1241,12 +1301,63 @@ const ITEM_COLUMNS = [
   "grading_cost", "grading_shipping", "grade_plan_cost", "plan_to_grade", "grade_values", "grade_odds", "grade_pop",
   "grading_submitted_at", "submission_id", "grading_returned_at", "grade_predicted",
   "cert_number",
+  "lot_id", "writedown_cents", "sale_gross_cents", "sale_fees_cents",
+  "sale_shipping_cents",
   "created_at", "updated_at",
 ] as const;
 const EXPENSE_COLUMNS = [
   "id", "name", "amount", "spent_on", "source", "notes", "created_at",
   "updated_at",
 ] as const;
+
+// The lot / year-end / transfer records (migration 0020). The log tables are
+// append-only, so a restore adds missing rows and never rewrites existing ones.
+const TAX_TABLES = {
+  user_settings: { cols: ["bulk_threshold_cents", "updated_at"], key: "user_id", append: false },
+  lots: {
+    cols: ["id", "name", "category", "purchased_on", "purchase_platform", "total_cost_cents",
+      "notes", "receipt_path", "est_value_cents", "writedown_cents", "opened_on",
+      "bulk_count", "bulk_note", "created_at", "updated_at"],
+    key: "id", append: false,
+  },
+  lot_allocations: {
+    cols: ["id", "lot_id", "version", "allocated_on", "reason", "basis_cents",
+      "threshold_cents", "sellable_value_cents", "loss_cents", "bulk_count", "lines",
+      "created_at"],
+    key: "id", append: true,
+  },
+  year_end_closes: {
+    cols: ["id", "tax_year", "closed_on", "basis_before_cents", "market_cents",
+      "writedown_cents", "ending_cents", "reopened_at", "reopen_reason", "created_at"],
+    key: "id", append: false,
+  },
+  year_end_lines: {
+    cols: ["id", "close_id", "kind", "item_id", "lot_id", "name", "category",
+      "basis_before_cents", "market_cents", "writedown_cents", "basis_after_cents"],
+    key: "id", append: true,
+  },
+  inventory_transfers: {
+    cols: ["id", "item_id", "name", "direction", "transferred_on", "basis_cents", "created_at"],
+    key: "id", append: true,
+  },
+} as const;
+type TaxTable = keyof typeof TAX_TABLES;
+const TAX_TABLE_NAMES = Object.keys(TAX_TABLES) as TaxTable[];
+
+/** The lot / year-end / transfer records, for the Download Backup feature —
+ * every row, paged past Supabase's 1,000-row cap. */
+export async function exportTaxRecords(): Promise<Record<TaxTable, Record<string, unknown>[]>> {
+  const { supabase } = await requireUser();
+  const entries = await Promise.all(
+    TAX_TABLE_NAMES.map(async (t) => {
+      const rows = await fetchAll<Record<string, unknown>>((a, b) =>
+        supabase.from(t).select("*").order(TAX_TABLES[t].key).range(a, b)
+      );
+      return [t, rows] as const;
+    })
+  );
+  return Object.fromEntries(entries) as Record<TaxTable, Record<string, unknown>[]>;
+}
 
 function pickColumns(
   row: unknown,
@@ -1286,11 +1397,37 @@ export async function restoreBackup(
   } else {
     return { error: "Unrecognized backup file." };
   }
-  if (items.length === 0 && expenses.length === 0) {
+  // Backups from before lots existed simply don't have these.
+  const tax = {} as Record<TaxTable, unknown[]>;
+  for (const t of TAX_TABLE_NAMES) {
+    const v = (payload as Record<string, unknown> | null)?.[t];
+    tax[t] = !Array.isArray(payload) && Array.isArray(v) ? v : [];
+  }
+  if (items.length === 0 && expenses.length === 0 && tax.lots.length === 0) {
     return { error: "Nothing to restore in this file." };
   }
   if (items.length > 20000 || expenses.length > 20000) {
     return { error: "Backup is too large to restore in one go." };
+  }
+
+  const restoreTax = async (t: TaxTable) => {
+    if (tax[t].length === 0) return null;
+    const spec = TAX_TABLES[t];
+    const rows = tax[t].map((r) => {
+      const row = pickColumns(r, spec.cols, user.id);
+      if (spec.key === "user_id") delete row.id;
+      return row;
+    });
+    const { error } = await supabase
+      .from(t)
+      .upsert(rows, { onConflict: spec.key, ignoreDuplicates: spec.append });
+    return error ? dbError(error.message) : null;
+  };
+
+  // Lots go in before items (items point at them); the logs after both.
+  for (const t of ["user_settings", "lots"] as const) {
+    const err = await restoreTax(t);
+    if (err) return { error: err };
   }
 
   if (items.length > 0) {
@@ -1308,12 +1445,20 @@ export async function restoreBackup(
     if (error) return { error: dbError(error.message) };
   }
 
+  for (const t of ["lot_allocations", "year_end_closes", "year_end_lines", "inventory_transfers"] as const) {
+    const err = await restoreTax(t);
+    if (err) return { error: err };
+  }
+
   revalidatePath("/inventory");
   revalidatePath("/sales");
   revalidatePath("/pending");
   revalidatePath("/ripped");
   revalidatePath("/expenses");
   revalidatePath("/dashboard");
+  revalidatePath("/lots");
+  revalidatePath("/year-end");
+  revalidatePath("/tax-report");
   return { items: items.length, expenses: expenses.length };
 }
 

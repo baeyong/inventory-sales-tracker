@@ -10,3 +10,25 @@ export function splitPayout(total: number, n: number): number[] {
   for (let k = 0; k < Math.abs(remainder); k++) cents[k] += step;
   return cents.map((c) => c / 100);
 }
+
+/** Dollars (as stored in the older numeric columns) to integer cents. */
+export function toCents(dollars: number | string | null | undefined): number {
+  return Math.round(Number(dollars ?? 0) * 100);
+}
+
+/** "$1,234.56" from integer cents. */
+export function formatCents(cents: number): string {
+  return (cents / 100).toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+  });
+}
+
+/** A typed dollar amount ("12.5", "$1,200") to cents; null when blank or not
+ * a number. */
+export function parseCents(input: string | null | undefined): number | null {
+  const t = String(input ?? "").replace(/[$,\s]/g, "");
+  if (t === "") return null;
+  const n = Number(t);
+  return Number.isFinite(n) ? Math.round(n * 100) : null;
+}

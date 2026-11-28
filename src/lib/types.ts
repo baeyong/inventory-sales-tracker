@@ -37,12 +37,21 @@ export function gradingSpend(
 }
 
 /** What an item cost all-in: its purchase price plus any grading fee and
- * shipping. Profit is always measured against this, never against
- * purchase_price alone. */
+ * shipping, less any year-end write-down. Profit is always measured against
+ * this, never against purchase_price alone.
+ *
+ * writedown_cents is optional here so callers holding a partial item still
+ * type-check; it is 0 on every item until a year-end close writes it down. */
 export function costBasis(
-  item: Pick<Item, "purchase_price" | "grading_cost" | "grading_shipping">
+  item: Pick<Item, "purchase_price" | "grading_cost" | "grading_shipping"> & {
+    writedown_cents?: number | null;
+  }
 ): number {
-  return Number(item.purchase_price) + gradingSpend(item);
+  return (
+    Number(item.purchase_price) +
+    gradingSpend(item) -
+    Number(item.writedown_cents ?? 0) / 100
+  );
 }
 
 export interface Item {
@@ -89,6 +98,11 @@ export interface Item {
   grading_returned_at: string | null; // YYYY-MM-DD back from the grader
   grade_predicted: string | null; // the grade expected when sent in
   cert_number: string | null;
+  lot_id: string | null; // the lot it was opened out of; its cost is locked by that lot's allocation
+  writedown_cents: number; // total year-end write-downs, taken off its cost basis
+  sale_gross_cents: number | null; // sale price before fees, when entered
+  sale_fees_cents: number | null; // platform fees on the sale
+  sale_shipping_cents: number | null; // shipping paid on the sale
   created_at: string;
   updated_at: string;
 }
@@ -132,4 +146,98 @@ export function formatDate(iso: string | null): string {
     month: "short",
     day: "numeric",
   });
+}
+
+// ---------------------------------------------------------------------------
+// Lots, year-end close and transfers. Money in these tables is integer cents.
+
+/** A sealed purchase (box, pack, lot) that gets opened into items. Unopened,
+ * it is inventory in its own right at its full cost. */
+export interface Lot {
+  id: string;
+  user_id: string;
+  name: string;
+  category: string; // default category for what gets pulled from it
+  purchased_on: string; // YYYY-MM-DD
+  purchase_platform: string | null;
+  total_cost_cents: number; // all-in: price + tax + shipping
+  notes: string | null;
+  receipt_path: string | null; // object path in the private "receipts" bucket
+  est_value_cents: number | null; // market value while unopened
+  writedown_cents: number; // year-end write-downs while unopened
+  opened_on: string | null; // null = unopened
+  bulk_count: number;
+  bulk_note: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** One item's share in an allocation. item_id is null only for loss-only
+ * allocations, which have no items. */
+export interface AllocationLine {
+  item_id: string | null;
+  name: string;
+  value_cents: number;
+  sellable: boolean;
+  cost_cents: number;
+}
+
+/** One run of a lot's cost allocation. Version 1 is the open; later versions
+ * are re-allocations, which must carry a reason. Never edited or deleted. */
+export interface LotAllocation {
+  id: string;
+  user_id: string;
+  lot_id: string;
+  version: number;
+  allocated_on: string;
+  reason: string | null;
+  basis_cents: number;
+  threshold_cents: number;
+  sellable_value_cents: number;
+  loss_cents: number; // whole basis when nothing was sellable
+  bulk_count: number;
+  lines: AllocationLine[];
+  created_at: string;
+}
+
+export interface YearEndClose {
+  id: string;
+  user_id: string;
+  tax_year: number;
+  closed_on: string;
+  basis_before_cents: number;
+  market_cents: number;
+  writedown_cents: number;
+  ending_cents: number; // ending inventory after write-downs
+  reopened_at: string | null; // set = superseded, its write-downs reversed
+  reopen_reason: string | null;
+  created_at: string;
+}
+
+export interface YearEndLine {
+  id: string;
+  user_id: string;
+  close_id: string;
+  kind: "item" | "lot";
+  item_id: string | null;
+  lot_id: string | null;
+  name: string;
+  category: string | null;
+  basis_before_cents: number;
+  market_cents: number;
+  writedown_cents: number;
+  basis_after_cents: number;
+}
+
+/** A move between business inventory and the Personal Collection, at the
+ * item's basis on the day it moved. */
+export interface InventoryTransfer {
+  id: string;
+  user_id: string;
+  item_id: string | null;
+  name: string;
+  direction: "to_personal" | "to_inventory";
+  transferred_on: string;
+  basis_cents: number;
+  created_at: string;
 }

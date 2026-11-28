@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { exportItems, listExpenses } from "@/app/(app)/actions";
+import { exportItems, exportTaxRecords, listExpenses } from "@/app/(app)/actions";
 import { buildTaxCsv } from "@/lib/taxReport";
 
 function download(filename: string, content: string, type: string) {
@@ -32,8 +32,10 @@ export default function BackupButtons() {
         listExpenses(),
       ]);
       if (kind === "json") {
-        // Complete, restorable snapshot: everything you own, both tables.
-        const snapshot = { version: 1, exported_at: stamp, items, expenses };
+        // Complete, restorable snapshot: everything you own — items,
+        // expenses, and the lot / year-end / transfer records.
+        const tax = await exportTaxRecords();
+        const snapshot = { version: 2, exported_at: stamp, items, expenses, ...tax };
         download(
           `resale-backup-${stamp}.json`,
           JSON.stringify(snapshot, null, 2),

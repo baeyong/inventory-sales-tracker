@@ -9,9 +9,8 @@ import ThemeToggle from "@/components/ThemeToggle";
 type NavLink = { href: string; label: string };
 type NavEntry = NavLink | { label: string; items: NavLink[] };
 
-// Seven top-level entries; the holding areas and the sales views sit under a
-// menu each, with their own tabs on the page itself. Opened boxes and Grading
-// stand alone.
+// Nine top-level entries; the holding areas, the sales views and the tax
+// pages sit under a menu each. Lots, Opened boxes and Grading stand alone.
 const NAV: NavEntry[] = [
   { href: "/dashboard", label: "Dashboard" },
   {
@@ -22,6 +21,7 @@ const NAV: NavEntry[] = [
       { href: "/collection", label: "Collection" },
     ],
   },
+  { href: "/lots", label: "Lots" },
   { href: "/ripped", label: "Opened" },
   { href: "/grading", label: "Grading" },
   {
@@ -32,6 +32,13 @@ const NAV: NavEntry[] = [
     ],
   },
   { href: "/expenses", label: "Expenses" },
+  {
+    label: "Tax",
+    items: [
+      { href: "/year-end", label: "Year-end close" },
+      { href: "/tax-report", label: "COGS report" },
+    ],
+  },
   { href: "/data", label: "Data" },
 ];
 

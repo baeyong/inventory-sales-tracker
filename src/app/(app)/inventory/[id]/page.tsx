@@ -83,6 +83,9 @@ export default async function ItemPage({
                 defaultPlatform={item.sale_platform}
                 defaultPayout={item.sale_payout}
                 defaultBuyer={item.buyer}
+                defaultGrossCents={item.sale_gross_cents}
+                defaultFeesCents={item.sale_fees_cents}
+                defaultShippingCents={item.sale_shipping_cents}
                 submitLabel="Update sale"
               />
             </section>
